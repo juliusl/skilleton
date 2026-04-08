@@ -191,3 +191,129 @@ pub struct SkillMeta {
     pub description: String,
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_valid_single_segment() {
+        let id = ItemId::parse("skill:my-skill").unwrap();
+        assert_eq!(id.to_string(), "skill:my-skill");
+    }
+
+    #[test]
+    fn parse_valid_multi_segment() {
+        let id = ItemId::parse("skill:my-skill.procedure:auth.step:validate").unwrap();
+        assert_eq!(id.segments().len(), 3);
+    }
+
+    #[test]
+    fn parse_rejects_invalid_prefix() {
+        assert!(ItemId::parse("foo:bar").is_err());
+    }
+
+    #[test]
+    fn parse_rejects_uppercase_slug() {
+        assert!(ItemId::parse("skill:MySkill").is_err());
+    }
+
+    #[test]
+    fn parse_rejects_slug_with_spaces() {
+        assert!(ItemId::parse("skill:my skill").is_err());
+    }
+
+    #[test]
+    fn parse_rejects_slug_over_50_chars() {
+        let long_slug = "a".repeat(51);
+        assert!(ItemId::parse(&format!("skill:{long_slug}")).is_err());
+    }
+
+    #[test]
+    fn parse_rejects_empty_string() {
+        assert!(ItemId::parse("").is_err());
+    }
+
+    #[test]
+    fn parse_rejects_leading_hyphen_slug() {
+        assert!(ItemId::parse("skill:-foo").is_err());
+    }
+
+    #[test]
+    fn parse_rejects_trailing_hyphen_slug() {
+        assert!(ItemId::parse("skill:foo-").is_err());
+    }
+
+    #[test]
+    fn parse_rejects_consecutive_hyphens() {
+        assert!(ItemId::parse("skill:foo--bar").is_err());
+    }
+
+    #[test]
+    fn parse_rejects_bare_hyphen_slug() {
+        assert!(ItemId::parse("skill:-").is_err());
+    }
+
+    #[test]
+    fn parse_rejects_malformed_segment() {
+        assert!(ItemId::parse("nocolon").is_err());
+    }
+
+    #[test]
+    fn segments_returns_correct_parts() {
+        let id = ItemId::parse("skill:s1.procedure:p1").unwrap();
+        let segs = id.segments();
+        assert_eq!(segs.len(), 2);
+        assert_eq!(segs[0].type_prefix, TypePrefix::Skill);
+        assert_eq!(segs[0].slug, "s1");
+        assert_eq!(segs[1].type_prefix, TypePrefix::Procedure);
+        assert_eq!(segs[1].slug, "p1");
+    }
+
+    #[test]
+    fn display_round_trips() {
+        let original = "skill:s1.procedure:p1.step:s1";
+        let id = ItemId::parse(original).unwrap();
+        let reparsed = ItemId::parse(&id.to_string()).unwrap();
+        assert_eq!(id, reparsed);
+    }
+
+    #[test]
+    fn parent_returns_none_for_single_segment() {
+        let id = ItemId::parse("skill:root").unwrap();
+        assert!(id.parent().is_none());
+    }
+
+    #[test]
+    fn parent_returns_parent_path() {
+        let id = ItemId::parse("skill:s1.procedure:p1.step:s1").unwrap();
+        let parent = id.parent().unwrap();
+        assert_eq!(parent, ItemId::parse("skill:s1.procedure:p1").unwrap());
+    }
+
+    #[test]
+    fn prefix_matches_self() {
+        let id = ItemId::parse("skill:s1.procedure:p1").unwrap();
+        assert!(id.prefix_matches(&id));
+    }
+
+    #[test]
+    fn prefix_matches_ancestor() {
+        let id = ItemId::parse("skill:s1.procedure:p1.step:s1").unwrap();
+        let prefix = ItemId::parse("skill:s1").unwrap();
+        assert!(id.prefix_matches(&prefix));
+    }
+
+    #[test]
+    fn prefix_does_not_match_partial_segment() {
+        let id = ItemId::parse("skill:s1-extra").unwrap();
+        let prefix = ItemId::parse("skill:s1").unwrap();
+        assert!(!id.prefix_matches(&prefix));
+    }
+
+    #[test]
+    fn append_creates_child_path() {
+        let parent = ItemId::parse("skill:s1").unwrap();
+        let child = parent.append(TypePrefix::Procedure, "auth").unwrap();
+        assert_eq!(child, ItemId::parse("skill:s1.procedure:auth").unwrap());
+    }
+}

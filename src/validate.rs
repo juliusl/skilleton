@@ -132,3 +132,176 @@ fn detect_cycle<'a>(graph: &HashMap<&'a ItemId, Vec<&'a ItemId>>) -> Option<Vec<
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::*;
+
+    fn make_id(s: &str) -> ItemId {
+        ItemId::parse(s).expect("test ID should be valid")
+    }
+
+    fn make_meta(s: &str) -> ItemMeta {
+        ItemMeta { id: make_id(s), conditions: vec![] }
+    }
+
+    fn make_task(id: &str, invokes: Option<&str>) -> Task {
+        Task {
+            meta: make_meta(id),
+            subject: "test".to_string(),
+            action: "test".to_string(),
+            invokes: invokes.map(|s| make_id(s)),
+        }
+    }
+
+    fn make_step(id: &str, tasks: Vec<Task>) -> Step {
+        Step {
+            meta: make_meta(id),
+            tasks,
+            completion_criteria: vec![],
+            policies: vec![],
+        }
+    }
+
+    fn make_procedure(id: &str, steps: Vec<Step>) -> Procedure {
+        Procedure {
+            meta: make_meta(id),
+            steps,
+            entrance_criteria: vec![],
+            exit_criteria: vec![],
+            policies: vec![],
+        }
+    }
+
+    #[test]
+    fn valid_dag_passes() {
+        let skill = Skill {
+            meta: make_meta("skill:test"),
+            metadata: SkillMeta::default(),
+            procedures: vec![
+                make_procedure("procedure:a", vec![
+                    make_step("step:a1", vec![make_task("task:a1", Some("procedure:b"))]),
+                ]),
+                make_procedure("procedure:b", vec![
+                    make_step("step:b1", vec![make_task("task:b1", Some("procedure:c"))]),
+                ]),
+                make_procedure("procedure:c", vec![
+                    make_step("step:c1", vec![make_task("task:c1", None)]),
+                ]),
+            ],
+            policies: vec![],
+        };
+        assert!(validate_references(&skill).is_ok());
+    }
+
+    #[test]
+    fn missing_procedure_returns_error() {
+        let skill = Skill {
+            meta: make_meta("skill:test"),
+            metadata: SkillMeta::default(),
+            procedures: vec![
+                make_procedure("procedure:a", vec![
+                    make_step("step:a1", vec![
+                        make_task("task:a1", Some("procedure:nonexistent")),
+                    ]),
+                ]),
+            ],
+            policies: vec![],
+        };
+        let errs = validate_references(&skill).unwrap_err();
+        assert!(errs.iter().any(|e| matches!(e, ReferenceError::MissingProcedure { .. })));
+    }
+
+    #[test]
+    fn direct_cycle_detected() {
+        let skill = Skill {
+            meta: make_meta("skill:test"),
+            metadata: SkillMeta::default(),
+            procedures: vec![
+                make_procedure("procedure:a", vec![
+                    make_step("step:a1", vec![make_task("task:a1", Some("procedure:b"))]),
+                ]),
+                make_procedure("procedure:b", vec![
+                    make_step("step:b1", vec![make_task("task:b1", Some("procedure:a"))]),
+                ]),
+            ],
+            policies: vec![],
+        };
+        let errs = validate_references(&skill).unwrap_err();
+        assert!(errs.iter().any(|e| matches!(e, ReferenceError::CycleDetected { .. })));
+    }
+
+    #[test]
+    fn indirect_cycle_detected() {
+        let skill = Skill {
+            meta: make_meta("skill:test"),
+            metadata: SkillMeta::default(),
+            procedures: vec![
+                make_procedure("procedure:a", vec![
+                    make_step("step:a1", vec![make_task("task:a1", Some("procedure:b"))]),
+                ]),
+                make_procedure("procedure:b", vec![
+                    make_step("step:b1", vec![make_task("task:b1", Some("procedure:c"))]),
+                ]),
+                make_procedure("procedure:c", vec![
+                    make_step("step:c1", vec![make_task("task:c1", Some("procedure:a"))]),
+                ]),
+            ],
+            policies: vec![],
+        };
+        let errs = validate_references(&skill).unwrap_err();
+        assert!(errs.iter().any(|e| matches!(e, ReferenceError::CycleDetected { .. })));
+    }
+
+    #[test]
+    fn self_reference_detected() {
+        let skill = Skill {
+            meta: make_meta("skill:test"),
+            metadata: SkillMeta::default(),
+            procedures: vec![
+                make_procedure("procedure:a", vec![
+                    make_step("step:a1", vec![make_task("task:a1", Some("procedure:a"))]),
+                ]),
+            ],
+            policies: vec![],
+        };
+        let errs = validate_references(&skill).unwrap_err();
+        assert!(errs.iter().any(|e| matches!(e, ReferenceError::CycleDetected { .. })));
+    }
+
+    #[test]
+    fn no_invokes_passes() {
+        let skill = Skill {
+            meta: make_meta("skill:test"),
+            metadata: SkillMeta::default(),
+            procedures: vec![
+                make_procedure("procedure:a", vec![
+                    make_step("step:a1", vec![make_task("task:a1", None)]),
+                ]),
+            ],
+            policies: vec![],
+        };
+        assert!(validate_references(&skill).is_ok());
+    }
+
+    #[test]
+    fn error_messages_include_ids() {
+        let skill = Skill {
+            meta: make_meta("skill:test"),
+            metadata: SkillMeta::default(),
+            procedures: vec![
+                make_procedure("procedure:a", vec![
+                    make_step("step:a1", vec![
+                        make_task("task:a1", Some("procedure:missing")),
+                    ]),
+                ]),
+            ],
+            policies: vec![],
+        };
+        let errs = validate_references(&skill).unwrap_err();
+        let msg = format!("{}", errs[0]);
+        assert!(msg.contains("task:a1"));
+        assert!(msg.contains("procedure:missing"));
+    }
+}
