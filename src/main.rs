@@ -1,5 +1,7 @@
+//! Skilleton CLI — build and validate agent skills from the command line.
+
 use clap::{Parser, Subcommand};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 
 use skilleton::conflict::detect_policy_overlaps;
@@ -46,7 +48,41 @@ fn main() {
     process::exit(exit_code);
 }
 
-fn cmd_init(path: &PathBuf) -> i32 {
+/// Run all validators on a loaded skill. Returns the error count.
+/// Reports errors to stderr and policy overlap warnings.
+fn run_validators(skill: &Skill) -> usize {
+    let mut errors = 0;
+
+    if let Err(ref_errors) = validate_invocation_references(skill) {
+        for e in &ref_errors {
+            eprintln!("error: {}", e);
+        }
+        errors += ref_errors.len();
+    }
+
+    if let Err(crit_errors) = validate_criterion_references(skill) {
+        for e in &crit_errors {
+            eprintln!("error: {}", e);
+        }
+        errors += crit_errors.len();
+    }
+
+    if let Err(prefix_errors) = validate_type_prefixes(skill) {
+        for e in &prefix_errors {
+            eprintln!("error: {}", e);
+        }
+        errors += prefix_errors.len();
+    }
+
+    let overlaps = detect_policy_overlaps(skill);
+    for overlap in &overlaps {
+        eprintln!("warning: policy overlap at {}", overlap.target_scope.as_str());
+    }
+
+    errors
+}
+
+fn cmd_init(path: &Path) -> i32 {
     if path.join("skill.toml").exists() {
         eprintln!("error: skill already exists at {}", path.display());
         return 1;
@@ -91,7 +127,7 @@ fn cmd_init(path: &PathBuf) -> i32 {
     0
 }
 
-fn cmd_check(path: &PathBuf) -> i32 {
+fn cmd_check(path: &Path) -> i32 {
     let skill = match SkillLoader::load(path) {
         Ok(s) => s,
         Err(e) => {
@@ -100,35 +136,7 @@ fn cmd_check(path: &PathBuf) -> i32 {
         }
     };
 
-    let mut errors = 0;
-
-    if let Err(ref_errors) = validate_invocation_references(&skill) {
-        for e in &ref_errors {
-            eprintln!("error: {}", e);
-        }
-        errors += ref_errors.len();
-    }
-
-    if let Err(crit_errors) = validate_criterion_references(&skill) {
-        for e in &crit_errors {
-            eprintln!("error: {}", e);
-        }
-        errors += crit_errors.len();
-    }
-
-    if let Err(prefix_errors) = validate_type_prefixes(&skill) {
-        for e in &prefix_errors {
-            eprintln!("error: {}", e);
-        }
-        errors += prefix_errors.len();
-    }
-
-    let overlaps = detect_policy_overlaps(&skill);
-    if !overlaps.is_empty() {
-        for overlap in &overlaps {
-            eprintln!("warning: policy overlap at {}", overlap.target_scope.as_str());
-        }
-    }
+    let errors = run_validators(&skill);
 
     if errors > 0 {
         eprintln!("{} error(s) found", errors);
@@ -139,7 +147,7 @@ fn cmd_check(path: &PathBuf) -> i32 {
     }
 }
 
-fn cmd_build(path: &PathBuf) -> i32 {
+fn cmd_build(path: &Path) -> i32 {
     let skill = match SkillLoader::load(path) {
         Ok(s) => s,
         Err(e) => {
@@ -148,29 +156,8 @@ fn cmd_build(path: &PathBuf) -> i32 {
         }
     };
 
-    // Validate before rendering
-    let mut errors = 0;
-
-    if let Err(ref_errors) = validate_invocation_references(&skill) {
-        for e in &ref_errors {
-            eprintln!("error: {}", e);
-        }
-        errors += ref_errors.len();
-    }
-
-    if let Err(crit_errors) = validate_criterion_references(&skill) {
-        for e in &crit_errors {
-            eprintln!("error: {}", e);
-        }
-        errors += crit_errors.len();
-    }
-
-    if let Err(prefix_errors) = validate_type_prefixes(&skill) {
-        for e in &prefix_errors {
-            eprintln!("error: {}", e);
-        }
-        errors += prefix_errors.len();
-    }
+    // Validate before rendering (same as check, per ADR-0009)
+    let errors = run_validators(&skill);
 
     if errors > 0 {
         eprintln!("{} error(s) found — build aborted", errors);
