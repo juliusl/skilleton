@@ -21,8 +21,11 @@ pub struct Task {
 pub struct Step {
     #[serde(flatten)]
     pub meta: ItemMeta,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tasks: Vec<Task>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub completion_criteria: Vec<CriterionRef>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub policies: Vec<Policy>,
     /// Criterion definitions at step level (ADR-0006 §6).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -34,9 +37,13 @@ pub struct Step {
 pub struct Procedure {
     #[serde(flatten)]
     pub meta: ItemMeta,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub steps: Vec<Step>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub entrance_criteria: Vec<CriterionRef>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub exit_criteria: Vec<CriterionRef>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub policies: Vec<Policy>,
     /// Criterion definitions at procedure level (ADR-0006 §6).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -50,7 +57,9 @@ pub struct Skill {
     pub meta: ItemMeta,
     #[serde(flatten)]
     pub metadata: SkillMeta,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub procedures: Vec<Procedure>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub policies: Vec<Policy>,
     /// Criterion definitions at skill level (ADR-0006 §2).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -464,8 +473,46 @@ mod tests {
     }
 
     #[test]
-    fn serde_malformed_toml_produces_error() {
-        let result: Result<Task, _> = toml::from_str("not valid toml {{{}");
-        assert!(result.is_err());
+    fn serde_empty_vecs_omitted_in_serialization() {
+        let skill = Skill {
+            meta: make_meta("skill:minimal"),
+            metadata: SkillMeta::default(),
+            procedures: vec![],
+            policies: vec![],
+            criteria: vec![],
+        };
+        let toml_str = toml::to_string(&skill).unwrap();
+        assert!(!toml_str.contains("procedures"), "empty procedures should be omitted");
+        assert!(!toml_str.contains("policies"), "empty policies should be omitted");
+        assert!(!toml_str.contains("criteria"), "empty criteria should be omitted");
+    }
+
+    #[test]
+    fn serde_omitted_vecs_deserialize_to_empty() {
+        let toml_str = r#"
+            id = "skill:bare"
+            name = "Bare"
+            description = ""
+        "#;
+        let skill: Skill = toml::from_str(toml_str).unwrap();
+        assert!(skill.procedures.is_empty());
+        assert!(skill.policies.is_empty());
+        assert!(skill.criteria.is_empty());
+    }
+
+    #[test]
+    fn serde_explicit_empty_arrays_still_deserialize() {
+        let toml_str = r#"
+            id = "skill:explicit"
+            name = "Explicit"
+            description = ""
+            procedures = []
+            policies = []
+            criteria = []
+        "#;
+        let skill: Skill = toml::from_str(toml_str).unwrap();
+        assert!(skill.procedures.is_empty());
+        assert!(skill.policies.is_empty());
+        assert!(skill.criteria.is_empty());
     }
 }

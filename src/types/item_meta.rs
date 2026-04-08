@@ -9,6 +9,7 @@ use super::{ItemId, CriterionRef};
 pub struct ItemMeta {
     pub id: ItemId,
     /// Conditional criteria — if empty, the item is implicitly Active.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub conditions: Vec<CriterionRef>,
 }
 
