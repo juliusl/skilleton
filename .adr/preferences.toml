@@ -3,7 +3,7 @@ participation = "autonomous"
 auto_delegate = true
 
 [solve.dispatch]
-code_review = "juliusl-code-reviewer-v1"
+code_review = ["juliusl-code-reviewer-analytics-v5", "juliusl-code-reviewer-sweep-v5"]
 
 [author.dispatch]
 editor = "juliusl-editor-v4"

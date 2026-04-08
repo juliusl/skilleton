@@ -16,6 +16,7 @@ All policies are listed here with identifiers. Detailed descriptions follow in t
 | P-16 | Broken Makefile Targets | Stop and fix broken Makefile targets before proceeding |
 | P-17 | Autonomy Directives | Never take shortcuts when a procedure or plan has been established |
 | P-18 | Broken References Policy | Stop and fix broken references before proceeding |
+| P-19 | Colocated Unit Tests | Unit tests live in the same file as the code they test |
 
 ---
 
@@ -89,3 +90,12 @@ When operating autonomously, **NEVER** take shortcuts when a procedure or plan h
 ## P-18: Broken References Policy
 
 `make check-refs` must pass clean — zero broken references. Pre-existing broken references are not exempt. If `check-refs` fails at any point during a session, stop and fix the broken references before proceeding. Treating broken references as "pre-existing" and moving on is a policy violation.
+
+## P-19: Colocated Unit Tests
+
+Unit tests MUST live in the same file as the code they test, using `#[cfg(test)] mod tests`. In Rust, colocated tests serve two purposes:
+
+1. **Proof** — tests adjacent to the implementation act as inline proof that the code works as intended
+2. **Maintenance** — when the code changes, colocated tests are immediately visible and must be updated
+
+The `tests/` directory is reserved for integration tests that exercise cross-module behavior. Do not place unit tests there.

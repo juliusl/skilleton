@@ -22,7 +22,7 @@ Since semantics and ordering matters, it's actually difficult to make changes an
 
 ## Milestones
 
-### Milestone 1
+### Milestone 1 <!-- status: complete -->
 - Initial item abstraction and relationship definitions:
     - Two types `Hierarchy` based and `Singleton` based
     - `Policy`: A constraint or rule that **MUST** be followed. Must be a `Singleton`.
@@ -36,6 +36,14 @@ Since semantics and ordering matters, it's actually difficult to make changes an
         - Will be the entrypoint for any type of compilation or analysis tooling
 - **Open**: Define item ID scheme (e.g. UUIDs, namespaced paths, human-readable slugs)
 - **Open**: Design cross-procedure reference model — can `Tasks` or `Steps` reference other `Procedures`? If so, define cycle constraints and traversal semantics
+- **Follow-up (code review)**: Add type-prefix validation to `CriterionRef` constructor so it enforces the inner `ItemId` has `TypePrefix::Criterion`
+- **Follow-up (code review, nit)**: Consider making `TypePrefix::as_str` public for downstream display/serialization use
+- **Follow-up (code review, nit)**: Consider grouping validation functions if more rules are added (e.g., hierarchy depth, slug uniqueness)
+- **Follow-up (code review, nit)**: Consider `Cow<'_, str>` or `&str` for `Segment.slug` to avoid allocation in read-only inspection
+- **Follow-up (code review, nit)**: Consider renaming `validate_references` to `validate_invocation_references` to avoid ambiguity when criterion-reference validation is added
+- **Follow-up (QA plan)**: Add `trybuild` compile-fail test proving invalid compositions (e.g., `Step` containing a `Procedure`) are rejected at compile time
+- **Follow-up (QA plan)**: Add doc comment to `CriterionRef` documenting that referential integrity is the caller's responsibility
+- **Follow-up (code review)**: Enforce that `ItemId` type-prefix matches the struct type it identifies (e.g., `Procedure` must have a `procedure:` prefix)
 
 ### Milestone 2
 - Initial working data-format draft
