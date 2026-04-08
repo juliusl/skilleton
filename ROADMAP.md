@@ -37,6 +37,10 @@ Since semantics and ordering matters, it's actually difficult to make changes an
 - **Open**: Define item ID scheme (e.g. UUIDs, namespaced paths, human-readable slugs)
 - **Open**: Design cross-procedure reference model — can `Tasks` or `Steps` reference other `Procedures`? If so, define cycle constraints and traversal semantics
 - **Follow-up (code review)**: Add type-prefix validation to `CriterionRef` constructor so it enforces the inner `ItemId` has `TypePrefix::Criterion`
+- **Follow-up (code review, nit)**: Consider making `TypePrefix::as_str` public for downstream display/serialization use
+- **Follow-up (code review, nit)**: Consider grouping validation functions if more rules are added (e.g., hierarchy depth, slug uniqueness)
+- **Follow-up (code review, nit)**: Consider `Cow<'_, str>` or `&str` for `Segment.slug` to avoid allocation in read-only inspection
+- **Follow-up (code review, nit)**: Consider renaming `validate_references` to `validate_invocation_references` to avoid ambiguity when criterion-reference validation is added
 
 ### Milestone 2
 - Initial working data-format draft
