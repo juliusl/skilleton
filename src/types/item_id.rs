@@ -80,10 +80,10 @@ impl std::error::Error for ItemIdError {}
 const MAX_SLUG_LEN: usize = 50;
 
 fn validate_slug(slug: &str) -> Result<(), ItemIdError> {
-    if slug.is_empty() {
+    if slug.is_empty() || slug.len() > MAX_SLUG_LEN {
         return Err(ItemIdError::InvalidSlug(slug.to_string()));
     }
-    if slug.len() > MAX_SLUG_LEN {
+    if slug.starts_with('-') || slug.ends_with('-') || slug.contains("--") {
         return Err(ItemIdError::InvalidSlug(slug.to_string()));
     }
     for ch in slug.chars() {

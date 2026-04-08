@@ -36,7 +36,6 @@ Since semantics and ordering matters, it's actually difficult to make changes an
         - Will be the entrypoint for any type of compilation or analysis tooling
 - **Open**: Define item ID scheme (e.g. UUIDs, namespaced paths, human-readable slugs)
 - **Open**: Design cross-procedure reference model — can `Tasks` or `Steps` reference other `Procedures`? If so, define cycle constraints and traversal semantics
-- **Follow-up (code review)**: Tighten `validate_slug` to reject degenerate forms (leading/trailing/consecutive hyphens) before IDs are serialized to disk
 - **Follow-up (code review)**: Add type-prefix validation to `CriterionRef` constructor so it enforces the inner `ItemId` has `TypePrefix::Criterion`
 
 ### Milestone 2

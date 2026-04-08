@@ -399,6 +399,26 @@ mod tests {
     }
 
     #[test]
+    fn parse_rejects_leading_hyphen_slug() {
+        assert!(ItemId::parse("skill:-foo").is_err());
+    }
+
+    #[test]
+    fn parse_rejects_trailing_hyphen_slug() {
+        assert!(ItemId::parse("skill:foo-").is_err());
+    }
+
+    #[test]
+    fn parse_rejects_consecutive_hyphens() {
+        assert!(ItemId::parse("skill:foo--bar").is_err());
+    }
+
+    #[test]
+    fn parse_rejects_bare_hyphen_slug() {
+        assert!(ItemId::parse("skill:-").is_err());
+    }
+
+    #[test]
     fn parse_rejects_malformed_segment() {
         assert!(ItemId::parse("nocolon").is_err());
     }

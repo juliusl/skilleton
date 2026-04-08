@@ -73,14 +73,14 @@ Concrete commitments:
 1. A `Task` may include an optional `invokes: Option<ItemId>` field referencing another Procedure
 2. The referenced Procedure must exist within the same Skill. Cross-Skill references are intentionally out of scope — this decision addresses intra-Skill composition only.
 3. The reference graph across all Procedures in a Skill must form a DAG — the validator rejects cycles
-4. Cycle detection uses topological sort during validation (not at construction time)
+4. Cycle detection uses DFS (three-color marking) during validation (not at construction time)
 5. Policy resolution for an invoked Procedure merges the caller's inherited policies with the callee's own policies. Conflicts are surfaced as errors by the Policy compiler — a Skill with unresolved policy conflicts fails validation. The detailed merge specification (what constitutes a conflict, precedence rules between caller-inherited and callee-own policies) is deferred to the ADR that defines the Policy compiler's resolution algorithm.
 6. Read-only documentation links (Option B) are also supported via the existing `Links:` metadata field — they are separate from invocation references
 
 ## Consequences
 
 - **Positive:** Shared sub-procedures are defined once and reused — changes propagate automatically
-- **Positive:** The DAG constraint is enforceable at validation time with a standard topological sort, producing clear error messages when cycles are detected
+- **Positive:** The DAG constraint is enforceable at validation time with DFS cycle detection, producing clear error messages when cycles are detected
 - **Positive:** Documentation links and invocation references coexist — different use cases, different fields
 - **Negative:** Policy conflict detection must handle transitive inheritance across invocation edges. A Procedure invoked from two different callers may see conflicting policies from each caller's scope. The detailed merge specification (conflict definition, precedence rules) is deferred to the Policy compiler ADR; this decision establishes that conflicts are validation errors, not silent merges.
 - **Negative:** Deep invocation chains make it harder to reason about the full execution path. Mitigation: the compiler can produce a flattened view of any Procedure's full execution graph.
