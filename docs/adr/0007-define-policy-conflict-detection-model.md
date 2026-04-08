@@ -1,7 +1,7 @@
 # 7. Define policy conflict detection model
 
 Date: 2026-04-08
-Status: Planned
+Status: Accepted
 Last Updated: 2026-04-08
 Links: ADR-0002, ADR-0003, ADR-0004
 
