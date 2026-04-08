@@ -1,3 +1,8 @@
+//! Item identification primitives.
+//!
+//! Defines `ItemId` (hierarchical path-based identifiers), `TypePrefix`,
+//! `Segment`, `CriterionRef`, and `SkillMeta`.
+
 use std::fmt;
 
 /// Valid type prefixes for item path segments.

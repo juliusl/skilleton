@@ -1,3 +1,5 @@
+//! Common metadata shared by all item types.
+
 use super::{ItemId, CriterionRef};
 
 /// Common metadata shared by all item types.

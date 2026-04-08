@@ -1,3 +1,8 @@
+//! Cross-procedure reference validation.
+//!
+//! Validates that `Task.invokes` references point to existing Procedures
+//! and that the reference graph forms a DAG (no cycles).
+
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use super::types::{ItemId, Skill};
@@ -5,10 +10,12 @@ use super::types::{ItemId, Skill};
 /// Errors found during reference validation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReferenceError {
+    /// A Task references a Procedure that does not exist in the Skill.
     MissingProcedure {
         task_id: ItemId,
         referenced_id: ItemId,
     },
+    /// The reference graph contains a cycle, violating the DAG constraint.
     CycleDetected {
         cycle: Vec<ItemId>,
     },

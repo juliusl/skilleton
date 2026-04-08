@@ -43,6 +43,7 @@ Since semantics and ordering matters, it's actually difficult to make changes an
 - **Follow-up (code review, nit)**: Consider renaming `validate_references` to `validate_invocation_references` to avoid ambiguity when criterion-reference validation is added
 - **Follow-up (QA plan)**: Add `trybuild` compile-fail test proving invalid compositions (e.g., `Step` containing a `Procedure`) are rejected at compile time
 - **Follow-up (QA plan)**: Add doc comment to `CriterionRef` documenting that referential integrity is the caller's responsibility
+- **Follow-up (code review)**: Enforce that `ItemId` type-prefix matches the struct type it identifies (e.g., `Procedure` must have a `procedure:` prefix)
 
 ### Milestone 2
 - Initial working data-format draft

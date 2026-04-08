@@ -1,3 +1,5 @@
+//! Hierarchy item types: Task, Step, Procedure, and Skill.
+
 use super::{ItemMeta, CriterionRef, Policy, SkillMeta, ItemId};
 
 /// A single instruction with a subject and action. Hierarchy type.

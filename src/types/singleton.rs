@@ -1,3 +1,5 @@
+//! Singleton item types: Policy and Criterion.
+
 use super::ItemMeta;
 
 /// A constraint or rule that MUST be followed. Singleton type.
