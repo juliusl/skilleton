@@ -1,43 +1,60 @@
 //! Hierarchy item types: Task, Step, Procedure, and Skill.
 
-use super::{ItemMeta, CriterionRef, Policy, SkillMeta, ItemId};
+use serde::{Deserialize, Serialize};
+
+use super::{ItemMeta, CriterionRef, Criterion, Policy, SkillMeta, ItemId};
 
 /// A single instruction with a subject and action. Hierarchy type.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Task {
+    #[serde(flatten)]
     pub meta: ItemMeta,
     pub subject: String,
     pub action: String,
     /// Optional reference to another Procedure for composition (ADR-0004).
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub invokes: Option<ItemId>,
 }
 
 /// A set of Tasks with completion Criteria. Hierarchy type.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Step {
+    #[serde(flatten)]
     pub meta: ItemMeta,
     pub tasks: Vec<Task>,
     pub completion_criteria: Vec<CriterionRef>,
     pub policies: Vec<Policy>,
+    /// Criterion definitions at step level (ADR-0006 §6).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub criteria: Vec<Criterion>,
 }
 
 /// A list of Steps with entrance and exit Criteria. Hierarchy type.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Procedure {
+    #[serde(flatten)]
     pub meta: ItemMeta,
     pub steps: Vec<Step>,
     pub entrance_criteria: Vec<CriterionRef>,
     pub exit_criteria: Vec<CriterionRef>,
     pub policies: Vec<Policy>,
+    /// Criterion definitions at procedure level (ADR-0006 §6).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub criteria: Vec<Criterion>,
 }
 
 /// Root item with agentskills.io metadata. Hierarchy type (root).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Skill {
+    #[serde(flatten)]
     pub meta: ItemMeta,
+    #[serde(flatten)]
     pub metadata: SkillMeta,
     pub procedures: Vec<Procedure>,
     pub policies: Vec<Policy>,
+    /// Criterion definitions at skill level (ADR-0006 §2).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub criteria: Vec<Criterion>,
 }
 
 #[cfg(test)]
@@ -51,6 +68,14 @@ mod tests {
 
     fn make_meta(s: &str) -> ItemMeta {
         ItemMeta { id: make_id(s), conditions: vec![] }
+    }
+
+    fn make_policy(id: &str, text: &str) -> Policy {
+        Policy {
+            meta: make_meta(id),
+            text: text.to_string(),
+            compatible_with: vec![],
+        }
     }
 
     #[test]
@@ -76,6 +101,7 @@ mod tests {
             }],
             completion_criteria: vec![],
             policies: vec![],
+            criteria: vec![],
         };
         assert_eq!(step.tasks.len(), 1);
     }
@@ -88,6 +114,7 @@ mod tests {
             entrance_criteria: vec![],
             exit_criteria: vec![],
             policies: vec![],
+            criteria: vec![],
         };
         assert_eq!(procedure.meta.id, make_id("procedure:auth-flow"));
     }
@@ -102,6 +129,7 @@ mod tests {
             },
             procedures: vec![],
             policies: vec![],
+            criteria: vec![],
         };
         assert_eq!(skill.metadata.name, "My Skill");
     }
@@ -119,6 +147,7 @@ mod tests {
             tasks: vec![task],
             completion_criteria: vec![CriterionRef(make_id("criterion:greeted"))],
             policies: vec![],
+            criteria: vec![],
         };
         let procedure = Procedure {
             meta: make_meta("procedure:onboard"),
@@ -126,12 +155,14 @@ mod tests {
             entrance_criteria: vec![],
             exit_criteria: vec![CriterionRef(make_id("criterion:onboarded"))],
             policies: vec![],
+            criteria: vec![],
         };
         let skill = Skill {
             meta: make_meta("skill:onboarding"),
             metadata: SkillMeta::default(),
             procedures: vec![procedure],
             policies: vec![],
+            criteria: vec![],
         };
 
         assert_eq!(skill.procedures.len(), 1);
@@ -150,6 +181,7 @@ mod tests {
             metadata: SkillMeta::default(),
             procedures: vec![],
             policies: vec![],
+            criteria: vec![],
         };
         assert!(skill.procedures.is_empty());
     }
@@ -162,6 +194,7 @@ mod tests {
             entrance_criteria: vec![],
             exit_criteria: vec![],
             policies: vec![],
+            criteria: vec![],
         };
         assert!(procedure.steps.is_empty());
     }
@@ -173,6 +206,7 @@ mod tests {
             tasks: vec![],
             completion_criteria: vec![],
             policies: vec![],
+            criteria: vec![],
         };
         assert!(step.tasks.is_empty());
     }
@@ -191,11 +225,10 @@ mod tests {
                 entrance_criteria: vec![],
                 exit_criteria: vec![],
                 policies: vec![],
+                criteria: vec![],
             }],
-            policies: vec![Policy {
-                meta: make_meta("policy:cloned"),
-                text: "Must clone correctly".to_string(),
-            }],
+            policies: vec![make_policy("policy:cloned", "Must clone correctly")],
+            criteria: vec![],
         };
         let cloned = skill.clone();
         assert_eq!(skill, cloned);
@@ -203,15 +236,12 @@ mod tests {
 
     #[test]
     fn attach_policies_to_step() {
-        let policy = Policy {
-            meta: make_meta("policy:step-level"),
-            text: "Step-level constraint".to_string(),
-        };
         let step = Step {
             meta: make_meta("step:secured"),
             tasks: vec![],
             completion_criteria: vec![],
-            policies: vec![policy],
+            policies: vec![make_policy("policy:step-level", "Step-level constraint")],
+            criteria: vec![],
         };
         assert_eq!(step.policies.len(), 1);
         assert_eq!(step.policies[0].text, "Step-level constraint");
@@ -219,31 +249,25 @@ mod tests {
 
     #[test]
     fn attach_policies_to_procedure() {
-        let policy = Policy {
-            meta: make_meta("policy:proc-level"),
-            text: "Procedure-level constraint".to_string(),
-        };
         let procedure = Procedure {
             meta: make_meta("procedure:secured"),
             steps: vec![],
             entrance_criteria: vec![],
             exit_criteria: vec![],
-            policies: vec![policy],
+            policies: vec![make_policy("policy:proc-level", "Procedure-level constraint")],
+            criteria: vec![],
         };
         assert_eq!(procedure.policies.len(), 1);
     }
 
     #[test]
     fn attach_policies_to_skill() {
-        let policy = Policy {
-            meta: make_meta("policy:skill-level"),
-            text: "Skill-level constraint".to_string(),
-        };
         let skill = Skill {
             meta: make_meta("skill:secured"),
             metadata: SkillMeta::default(),
             procedures: vec![],
-            policies: vec![policy],
+            policies: vec![make_policy("policy:skill-level", "Skill-level constraint")],
+            criteria: vec![],
         };
         assert_eq!(skill.policies.len(), 1);
     }
@@ -258,6 +282,7 @@ mod tests {
                 CriterionRef(make_id("criterion:verified")),
             ],
             policies: vec![],
+            criteria: vec![],
         };
         assert_eq!(step.completion_criteria.len(), 2);
     }
@@ -270,6 +295,7 @@ mod tests {
             entrance_criteria: vec![CriterionRef(make_id("criterion:ready"))],
             exit_criteria: vec![CriterionRef(make_id("criterion:complete"))],
             policies: vec![],
+            criteria: vec![],
         };
         assert_eq!(procedure.entrance_criteria.len(), 1);
         assert_eq!(procedure.exit_criteria.len(), 1);
@@ -277,26 +303,20 @@ mod tests {
 
     #[test]
     fn independent_policy_sets_at_each_level() {
-        let skill_policy = Policy {
-            meta: make_meta("policy:global"),
-            text: "Global constraint".to_string(),
-        };
-        let proc_policy = Policy {
-            meta: make_meta("policy:local"),
-            text: "Procedure-local constraint".to_string(),
-        };
         let procedure = Procedure {
             meta: make_meta("procedure:mixed"),
             steps: vec![],
             entrance_criteria: vec![],
             exit_criteria: vec![],
-            policies: vec![proc_policy],
+            policies: vec![make_policy("policy:local", "Procedure-local constraint")],
+            criteria: vec![],
         };
         let skill = Skill {
             meta: make_meta("skill:layered"),
             metadata: SkillMeta::default(),
             procedures: vec![procedure],
-            policies: vec![skill_policy],
+            policies: vec![make_policy("policy:global", "Global constraint")],
+            criteria: vec![],
         };
 
         assert_eq!(skill.policies.len(), 1);
@@ -315,19 +335,11 @@ mod tests {
             tasks: vec![],
             completion_criteria: vec![],
             policies: vec![
-                Policy {
-                    meta: make_meta("policy:first"),
-                    text: "First constraint".to_string(),
-                },
-                Policy {
-                    meta: make_meta("policy:second"),
-                    text: "Second constraint".to_string(),
-                },
-                Policy {
-                    meta: make_meta("policy:third"),
-                    text: "Third constraint".to_string(),
-                },
+                make_policy("policy:first", "First constraint"),
+                make_policy("policy:second", "Second constraint"),
+                make_policy("policy:third", "Third constraint"),
             ],
+            criteria: vec![],
         };
         assert_eq!(step.policies.len(), 3);
     }
@@ -347,8 +359,113 @@ mod tests {
                 CriterionRef(make_id("criterion:z")),
             ],
             policies: vec![],
+            criteria: vec![],
         };
         assert_eq!(procedure.entrance_criteria.len(), 2);
         assert_eq!(procedure.exit_criteria.len(), 3);
+    }
+
+    #[test]
+    fn serde_task_round_trips_without_invokes() {
+        let task = Task {
+            meta: make_meta("task:greet"),
+            subject: "User".to_string(),
+            action: "Send greeting".to_string(),
+            invokes: None,
+        };
+        let toml_str = toml::to_string(&task).unwrap();
+        assert!(!toml_str.contains("invokes"));
+        let deserialized: Task = toml::from_str(&toml_str).unwrap();
+        assert_eq!(task, deserialized);
+    }
+
+    #[test]
+    fn serde_task_round_trips_with_invokes() {
+        let task = Task {
+            meta: make_meta("task:audit"),
+            subject: "System".to_string(),
+            action: "Log event".to_string(),
+            invokes: Some(make_id("procedure:audit-log")),
+        };
+        let toml_str = toml::to_string(&task).unwrap();
+        assert!(toml_str.contains("invokes"));
+        let deserialized: Task = toml::from_str(&toml_str).unwrap();
+        assert_eq!(task, deserialized);
+    }
+
+    #[test]
+    fn serde_step_round_trips() {
+        let step = Step {
+            meta: make_meta("step:greet"),
+            tasks: vec![Task {
+                meta: make_meta("task:send"),
+                subject: "User".to_string(),
+                action: "Send message".to_string(),
+                invokes: None,
+            }],
+            completion_criteria: vec![CriterionRef(make_id("criterion:greeted"))],
+            policies: vec![make_policy("policy:greet-by-name", "Address by name")],
+            criteria: vec![Criterion {
+                meta: make_meta("criterion:greeted"),
+                description: "User has been greeted".to_string(),
+            }],
+        };
+        let toml_str = toml::to_string(&step).unwrap();
+        let deserialized: Step = toml::from_str(&toml_str).unwrap();
+        assert_eq!(step, deserialized);
+    }
+
+    #[test]
+    fn serde_procedure_round_trips() {
+        let procedure = Procedure {
+            meta: make_meta("procedure:welcome"),
+            steps: vec![Step {
+                meta: make_meta("step:greet"),
+                tasks: vec![],
+                completion_criteria: vec![],
+                policies: vec![],
+                criteria: vec![],
+            }],
+            entrance_criteria: vec![CriterionRef(make_id("criterion:registered"))],
+            exit_criteria: vec![CriterionRef(make_id("criterion:onboarded"))],
+            policies: vec![],
+            criteria: vec![],
+        };
+        let toml_str = toml::to_string(&procedure).unwrap();
+        let deserialized: Procedure = toml::from_str(&toml_str).unwrap();
+        assert_eq!(procedure, deserialized);
+    }
+
+    #[test]
+    fn serde_skill_round_trips() {
+        let skill = Skill {
+            meta: make_meta("skill:onboarding"),
+            metadata: SkillMeta {
+                name: "Onboarding".to_string(),
+                description: "New user onboarding flow".to_string(),
+            },
+            procedures: vec![Procedure {
+                meta: make_meta("procedure:welcome"),
+                steps: vec![],
+                entrance_criteria: vec![],
+                exit_criteria: vec![],
+                policies: vec![],
+                criteria: vec![],
+            }],
+            policies: vec![make_policy("policy:no-plaintext", "Never store passwords in plaintext")],
+            criteria: vec![Criterion {
+                meta: make_meta("criterion:onboarded"),
+                description: "User has completed onboarding".to_string(),
+            }],
+        };
+        let toml_str = toml::to_string(&skill).unwrap();
+        let deserialized: Skill = toml::from_str(&toml_str).unwrap();
+        assert_eq!(skill, deserialized);
+    }
+
+    #[test]
+    fn serde_malformed_toml_produces_error() {
+        let result: Result<Task, _> = toml::from_str("not valid toml {{{}");
+        assert!(result.is_err());
     }
 }
