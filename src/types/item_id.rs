@@ -3,11 +3,17 @@ use std::fmt;
 /// Valid type prefixes for item path segments.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TypePrefix {
+    /// Root container for an agent skill.
     Skill,
+    /// A list of Steps with entrance and exit Criteria.
     Procedure,
+    /// A set of Tasks with completion Criteria.
     Step,
+    /// A single instruction with a subject and action.
     Task,
+    /// A constraint or rule that MUST be followed.
     Policy,
+    /// A state or outcome that is either satisfied or unsatisfied.
     Criterion,
 }
 
@@ -45,7 +51,9 @@ impl fmt::Display for TypePrefix {
 /// A parsed segment of an ItemId path.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Segment {
+    /// The type classification of this segment.
     pub type_prefix: TypePrefix,
+    /// The human-readable identifier within this segment.
     pub slug: String,
 }
 
@@ -58,9 +66,13 @@ impl fmt::Display for Segment {
 /// Errors when parsing or constructing an ItemId.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ItemIdError {
+    /// The input string was empty.
     Empty,
+    /// The type prefix is not one of the valid prefixes.
     InvalidTypePrefix(String),
+    /// The slug violates format constraints (charset, length, or hyphen rules).
     InvalidSlug(String),
+    /// The segment could not be split into a `type:slug` pair.
     MalformedSegment(String),
 }
 
