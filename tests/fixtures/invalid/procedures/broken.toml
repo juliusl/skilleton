@@ -1,0 +1,19 @@
+[procedure]
+id = "procedure:broken"
+conditions = []
+entrance_criteria = []
+exit_criteria = []
+policies = []
+
+[[procedure.steps]]
+id = "step:bad"
+conditions = []
+completion_criteria = []
+policies = []
+
+[[procedure.steps.tasks]]
+id = "task:invoke-missing"
+conditions = []
+subject = "System"
+action = "Call a nonexistent procedure"
+invokes = "procedure:does-not-exist"

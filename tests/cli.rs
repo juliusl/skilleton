@@ -129,3 +129,42 @@ fn build_missing_directory_exits_nonzero() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.is_empty(), "no stdout on failure");
 }
+
+#[test]
+fn check_invalid_fixture_reports_errors() {
+    let output = skilleton()
+        .args(["check", "tests/fixtures/invalid"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success(), "check on invalid fixture should fail");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("error"), "should report errors on stderr");
+}
+
+#[test]
+fn build_invalid_fixture_no_stdout() {
+    let output = skilleton()
+        .args(["build", "tests/fixtures/invalid"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success(), "build on invalid fixture should fail");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.is_empty(), "no stdout on validation failure");
+}
+
+#[test]
+fn init_with_trailing_slash() {
+    let dir = tempfile::tempdir().unwrap();
+    let path_str = format!("{}/my-skill/", dir.path().display());
+
+    let output = skilleton()
+        .args(["init", &path_str])
+        .output()
+        .unwrap();
+    // Should succeed — trailing slash is a valid path
+    assert!(
+        output.status.success(),
+        "init with trailing slash should work: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}

@@ -1,0 +1,10 @@
+[skill]
+id = "skill:invalid"
+conditions = []
+name = "Invalid"
+description = "A skill with broken references for testing"
+
+[[skill.policies]]
+id = "policy:only-rule"
+conditions = []
+text = "The only rule"
