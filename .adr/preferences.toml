@@ -1,0 +1,13 @@
+[solve]
+participation = "autonomous"
+auto_delegate = true
+
+[solve.dispatch]
+code_review = "juliusl-code-reviewer-v1"
+
+[author.dispatch]
+editor = "juliusl-editor-v4"
+
+[implement]
+participation = "autonomous"
+auto_commit = true
