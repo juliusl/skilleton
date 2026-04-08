@@ -1,4 +1,4 @@
-use super::{ItemMeta, CriterionRef, Policy, SkillMeta};
+use super::{ItemMeta, CriterionRef, Policy, SkillMeta, ItemId};
 
 /// A single instruction with a subject and action. Hierarchy type.
 #[derive(Debug, Clone, PartialEq)]
@@ -6,6 +6,8 @@ pub struct Task {
     pub meta: ItemMeta,
     pub subject: String,
     pub action: String,
+    /// Optional reference to another Procedure for composition (ADR-0004).
+    pub invokes: Option<ItemId>,
 }
 
 /// A set of Tasks with completion Criteria. Hierarchy type.

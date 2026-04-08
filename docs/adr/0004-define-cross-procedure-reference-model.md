@@ -1,7 +1,7 @@
 # 4. Define cross-procedure reference model
 
 Date: 2026-04-07
-Status: Ready
+Status: Accepted
 Last Updated: 2026-04-08
 Links: ADR-0002, ADR-0003
 
