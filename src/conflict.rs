@@ -587,3 +587,95 @@ mod tests {
         assert!(overlaps.is_empty());
     }
 }
+
+#[cfg(test)]
+mod edge_case_tests {
+    use super::*;
+    use crate::types::*;
+
+    fn make_id(s: &str) -> ItemId {
+        ItemId::parse(s).expect("test ID should be valid")
+    }
+
+    fn make_meta(s: &str) -> ItemMeta {
+        ItemMeta { id: make_id(s), conditions: vec![] }
+    }
+
+    fn make_policy(id: &str, text: &str) -> Policy {
+        Policy { meta: make_meta(id), text: text.to_string(), compatible_with: vec![] }
+    }
+
+    fn make_task(id: &str, invokes: Option<&str>) -> Task {
+        Task { meta: make_meta(id), subject: "test".to_string(), action: "test".to_string(), invokes: invokes.map(|s| make_id(s)) }
+    }
+
+    fn make_step(id: &str, tasks: Vec<Task>, policies: Vec<Policy>) -> Step {
+        Step { meta: make_meta(id), tasks, completion_criteria: vec![], policies, criteria: vec![] }
+    }
+
+    fn make_procedure(id: &str, steps: Vec<Step>, policies: Vec<Policy>) -> Procedure {
+        Procedure { meta: make_meta(id), steps, entrance_criteria: vec![], exit_criteria: vec![], policies, criteria: vec![] }
+    }
+
+    fn make_skill(procedures: Vec<Procedure>, policies: Vec<Policy>) -> Skill {
+        Skill { meta: make_meta("skill:test"), metadata: SkillMeta::default(), procedures, policies, criteria: vec![] }
+    }
+
+    // R11: Self-referential compatible_with has no effect
+    #[test]
+    fn self_referential_compatible_with_has_no_effect() {
+        let skill = make_skill(vec![], vec![
+            Policy {
+                meta: make_meta("policy:a"),
+                text: "Rule A".to_string(),
+                compatible_with: vec![make_id("policy:a")], // self-reference
+            },
+            make_policy("policy:b", "Rule B"),
+        ]);
+        let overlaps = detect_policy_overlaps(&skill);
+        assert_eq!(overlaps.len(), 1, "Self-referential annotation should not suppress overlap");
+    }
+
+    // R12: Multiple tasks invoking different procedures
+    #[test]
+    fn multiple_invocations_in_one_step_produce_independent_overlaps() {
+        let skill = make_skill(
+            vec![
+                make_procedure("procedure:caller", vec![
+                    make_step("step:s1", vec![
+                        make_task("task:t1", Some("procedure:callee-a")),
+                        make_task("task:t2", Some("procedure:callee-b")),
+                    ], vec![]),
+                ], vec![make_policy("policy:caller-p", "Caller rule")]),
+                make_procedure("procedure:callee-a", vec![], vec![make_policy("policy:a-p", "A rule")]),
+                make_procedure("procedure:callee-b", vec![], vec![make_policy("policy:b-p", "B rule")]),
+            ],
+            vec![],
+        );
+        let overlaps = detect_policy_overlaps(&skill);
+        let cross_proc_overlaps: Vec<_> = overlaps.iter()
+            .filter(|o| o.overlap_type == OverlapType::CrossProcedureInvocation)
+            .collect();
+        assert_eq!(cross_proc_overlaps.len(), 2, "Each invocation should produce its own overlap");
+    }
+
+    // R13: Diamond invocation pattern
+    #[test]
+    fn diamond_invocation_detects_convergence() {
+        let skill = make_skill(
+            vec![
+                make_procedure("procedure:a", vec![
+                    make_step("step:a1", vec![
+                        make_task("task:call-b", Some("procedure:b")),
+                        make_task("task:call-c", Some("procedure:c")),
+                    ], vec![]),
+                ], vec![make_policy("policy:a-p", "A rule")]),
+                make_procedure("procedure:b", vec![], vec![make_policy("policy:b-p", "B rule")]),
+                make_procedure("procedure:c", vec![], vec![make_policy("policy:c-p", "C rule")]),
+            ],
+            vec![],
+        );
+        let overlaps = detect_policy_overlaps(&skill);
+        assert!(!overlaps.is_empty(), "Diamond invocation should detect convergence");
+    }
+}
