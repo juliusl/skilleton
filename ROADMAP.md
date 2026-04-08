@@ -57,10 +57,15 @@ Since semantics and ordering matters, it's actually difficult to make changes an
 - **Resolved**: Added slug-filename consistency validation in `SkillLoader` — rejects procedure files where filename stem does not match ItemId slug
 - **Resolved (documented)**: Flat vs hierarchical `ItemId` convention — flat IDs are valid for test helpers and internal references; hierarchical paths required for skill files. Both formats parse correctly; `ItemId::type_prefix()` accessor added for convenience
 
-### Milestone 3
+### Milestone 3 <!-- status: complete -->
 - Create CLI to initialize, check, and build `Procedures` and `Policies`
     - Build command should output Markdown with correct ordering (policies before procedures)
 - Define simple skill toy to validate procedure
+- **Resolved**: Extracted shared `run_validators()` helper in CLI to eliminate validation duplication between check and build commands
+- **Resolved**: Fixed N² error counting bug in `cmd_check` (QA finding)
+- **Follow-up (M4)**: Add `#[serde(default, skip_serializing_if = "Vec::is_empty")]` to all Vec fields (policies, tasks, steps, entrance/exit/completion criteria, procedures) — currently only `criteria` has this, forcing verbose TOML with empty arrays
+- **Follow-up (M4)**: Review `SkillWriter` path API — `write(root, skill)` creates `<root>/<slug>/...`, requiring `path.parent()` workaround in init; consider adding `write_to(dir, skill)` for direct writes
+- **Follow-up (M4)**: Review `detect_policy_overlaps` sensitivity — reports false positive for policies at different hierarchy levels in the onboarding fixture
 
 ### Milestone 4
 - Finalize all schemas and specifications
