@@ -23,6 +23,12 @@ pub enum StorageError {
         path: PathBuf,
         source: std::io::Error,
     },
+    /// A procedure file's name does not match the slug from its ItemId.
+    SlugFilenameMismatch {
+        path: PathBuf,
+        filename_stem: String,
+        item_slug: String,
+    },
 }
 
 impl fmt::Display for StorageError {
@@ -40,6 +46,19 @@ impl fmt::Display for StorageError {
             StorageError::IoError { path, source } => {
                 write!(f, "I/O error at {}: {source}", path.display())
             }
+            StorageError::SlugFilenameMismatch {
+                path,
+                filename_stem,
+                item_slug,
+            } => {
+                write!(
+                    f,
+                    "slug-filename mismatch in {}: filename stem '{}' does not match ItemId slug '{}'",
+                    path.display(),
+                    filename_stem,
+                    item_slug
+                )
+            }
         }
     }
 }
@@ -51,6 +70,7 @@ impl std::error::Error for StorageError {
             StorageError::SerializeError { source, .. } => Some(source),
             StorageError::IoError { source, .. } => Some(source),
             StorageError::MissingSkillFile(_) => None,
+            StorageError::SlugFilenameMismatch { .. } => None,
         }
     }
 }

@@ -25,7 +25,7 @@ pub enum TypePrefix {
 }
 
 impl TypePrefix {
-    fn as_str(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             TypePrefix::Skill => "skill",
             TypePrefix::Procedure => "procedure",
@@ -179,6 +179,16 @@ impl ItemId {
     pub fn as_str(&self) -> &str {
         &self.raw
     }
+
+    /// Return the type prefix of the last segment.
+    ///
+    /// For single-segment IDs like `criterion:ready`, returns `Criterion`.
+    /// For multi-segment IDs like `skill:s.procedure:auth`, returns `Procedure`.
+    pub fn type_prefix(&self) -> TypePrefix {
+        let last_segment = self.raw.rsplit('.').next().unwrap_or(&self.raw);
+        let (prefix_str, _) = last_segment.split_once(':').expect("validated at parse time");
+        TypePrefix::parse(prefix_str).expect("validated at parse time")
+    }
 }
 
 impl fmt::Display for ItemId {
@@ -200,19 +210,53 @@ impl<'de> Deserialize<'de> for ItemId {
     }
 }
 
-/// Reference to a Criterion item by its ItemId.
+/// Type-safe reference to a Criterion item by its [`ItemId`].
+///
+/// The inner `ItemId` must have [`TypePrefix::Criterion`]. Use [`CriterionRef::new`]
+/// to construct with validation, or [`CriterionRef::new_unchecked`] when the prefix
+/// is already known (e.g., in test helpers).
+///
+/// **Referential integrity is the caller's responsibility** — this type guarantees
+/// the correct type-prefix but does not verify that the referenced Criterion
+/// actually exists in any Skill or scope.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CriterionRef(pub ItemId);
+pub struct CriterionRef(ItemId);
+
+impl CriterionRef {
+    /// Create a new `CriterionRef`, validating that the `ItemId` has a `criterion:` prefix.
+    pub fn new(id: ItemId) -> Result<Self, ItemIdError> {
+        let first_segment = id.segments().first().map(|s| s.type_prefix);
+        if first_segment != Some(TypePrefix::Criterion) {
+            return Err(ItemIdError::InvalidTypePrefix(format!(
+                "expected criterion prefix, got {}",
+                id.as_str()
+            )));
+        }
+        Ok(CriterionRef(id))
+    }
+
+    /// Create a `CriterionRef` without validating the type prefix.
+    /// Use only when the prefix is already known to be `criterion:`.
+    pub fn new_unchecked(id: ItemId) -> Self {
+        CriterionRef(id)
+    }
+
+    /// Return a reference to the inner `ItemId`.
+    pub fn id(&self) -> &ItemId {
+        &self.0
+    }
+}
 
 impl Serialize for CriterionRef {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.0.serialize(serializer)
+        self.id().serialize(serializer)
     }
 }
 
 impl<'de> Deserialize<'de> for CriterionRef {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        ItemId::deserialize(deserializer).map(CriterionRef)
+        let id = ItemId::deserialize(deserializer)?;
+        CriterionRef::new(id).map_err(serde::de::Error::custom)
     }
 }
 
@@ -400,7 +444,7 @@ mod tests {
     fn serde_criterion_ref_round_trips() {
         #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
         struct Wrapper { cref: CriterionRef }
-        let w = Wrapper { cref: CriterionRef(ItemId::parse("criterion:enabled").unwrap()) };
+        let w = Wrapper { cref: CriterionRef::new(ItemId::parse("criterion:enabled").unwrap()).unwrap() };
         let serialized = toml::to_string(&w).unwrap();
         let deserialized: Wrapper = toml::from_str(&serialized).unwrap();
         assert_eq!(w, deserialized);
@@ -419,5 +463,59 @@ mod tests {
         let serialized = toml::to_string(&w).unwrap();
         let deserialized: Wrapper = toml::from_str(&serialized).unwrap();
         assert_eq!(w, deserialized);
+    }
+
+    // -- Milestone 1 & 2 follow-up tests --
+
+    #[test]
+    fn type_prefix_as_str_is_public() {
+        assert_eq!(TypePrefix::Skill.as_str(), "skill");
+        assert_eq!(TypePrefix::Procedure.as_str(), "procedure");
+        assert_eq!(TypePrefix::Step.as_str(), "step");
+        assert_eq!(TypePrefix::Task.as_str(), "task");
+        assert_eq!(TypePrefix::Policy.as_str(), "policy");
+        assert_eq!(TypePrefix::Criterion.as_str(), "criterion");
+    }
+
+    #[test]
+    fn criterion_ref_new_accepts_criterion_prefix() {
+        let id = ItemId::parse("criterion:enabled").unwrap();
+        let cref = CriterionRef::new(id.clone()).unwrap();
+        assert_eq!(cref.id(), &id);
+    }
+
+    #[test]
+    fn criterion_ref_new_rejects_non_criterion_prefix() {
+        let id = ItemId::parse("policy:no-secrets").unwrap();
+        assert!(CriterionRef::new(id).is_err());
+    }
+
+    #[test]
+    fn criterion_ref_new_rejects_procedure_prefix() {
+        let id = ItemId::parse("procedure:auth").unwrap();
+        assert!(CriterionRef::new(id).is_err());
+    }
+
+    #[test]
+    fn criterion_ref_new_unchecked_bypasses_validation() {
+        let id = ItemId::parse("policy:no-secrets").unwrap();
+        let cref = CriterionRef::new_unchecked(id.clone());
+        assert_eq!(cref.id(), &id);
+    }
+
+    #[test]
+    fn criterion_ref_id_accessor_returns_inner() {
+        let id = ItemId::parse("criterion:ready").unwrap();
+        let cref = CriterionRef::new(id.clone()).unwrap();
+        assert_eq!(cref.id(), &id);
+        assert_eq!(cref.id().as_str(), "criterion:ready");
+    }
+
+    #[test]
+    fn serde_criterion_ref_rejects_non_criterion_prefix() {
+        #[derive(serde::Deserialize)]
+        struct Wrapper { _cref: CriterionRef }
+        let result: Result<Wrapper, _> = toml::from_str(r#"_cref = "policy:no-secrets""#);
+        assert!(result.is_err());
     }
 }

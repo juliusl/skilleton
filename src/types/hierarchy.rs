@@ -145,7 +145,7 @@ mod tests {
         let step = Step {
             meta: make_meta("step:welcome"),
             tasks: vec![task],
-            completion_criteria: vec![CriterionRef(make_id("criterion:greeted"))],
+            completion_criteria: vec![CriterionRef::new_unchecked(make_id("criterion:greeted"))],
             policies: vec![],
             criteria: vec![],
         };
@@ -153,7 +153,7 @@ mod tests {
             meta: make_meta("procedure:onboard"),
             steps: vec![step],
             entrance_criteria: vec![],
-            exit_criteria: vec![CriterionRef(make_id("criterion:onboarded"))],
+            exit_criteria: vec![CriterionRef::new_unchecked(make_id("criterion:onboarded"))],
             policies: vec![],
             criteria: vec![],
         };
@@ -278,8 +278,8 @@ mod tests {
             meta: make_meta("step:with-criteria"),
             tasks: vec![],
             completion_criteria: vec![
-                CriterionRef(make_id("criterion:done")),
-                CriterionRef(make_id("criterion:verified")),
+                CriterionRef::new_unchecked(make_id("criterion:done")),
+                CriterionRef::new_unchecked(make_id("criterion:verified")),
             ],
             policies: vec![],
             criteria: vec![],
@@ -292,8 +292,8 @@ mod tests {
         let procedure = Procedure {
             meta: make_meta("procedure:gated"),
             steps: vec![],
-            entrance_criteria: vec![CriterionRef(make_id("criterion:ready"))],
-            exit_criteria: vec![CriterionRef(make_id("criterion:complete"))],
+            entrance_criteria: vec![CriterionRef::new_unchecked(make_id("criterion:ready"))],
+            exit_criteria: vec![CriterionRef::new_unchecked(make_id("criterion:complete"))],
             policies: vec![],
             criteria: vec![],
         };
@@ -350,13 +350,13 @@ mod tests {
             meta: make_meta("procedure:multi-criteria"),
             steps: vec![],
             entrance_criteria: vec![
-                CriterionRef(make_id("criterion:a")),
-                CriterionRef(make_id("criterion:b")),
+                CriterionRef::new_unchecked(make_id("criterion:a")),
+                CriterionRef::new_unchecked(make_id("criterion:b")),
             ],
             exit_criteria: vec![
-                CriterionRef(make_id("criterion:x")),
-                CriterionRef(make_id("criterion:y")),
-                CriterionRef(make_id("criterion:z")),
+                CriterionRef::new_unchecked(make_id("criterion:x")),
+                CriterionRef::new_unchecked(make_id("criterion:y")),
+                CriterionRef::new_unchecked(make_id("criterion:z")),
             ],
             policies: vec![],
             criteria: vec![],
@@ -403,7 +403,7 @@ mod tests {
                 action: "Send message".to_string(),
                 invokes: None,
             }],
-            completion_criteria: vec![CriterionRef(make_id("criterion:greeted"))],
+            completion_criteria: vec![CriterionRef::new_unchecked(make_id("criterion:greeted"))],
             policies: vec![make_policy("policy:greet-by-name", "Address by name")],
             criteria: vec![Criterion {
                 meta: make_meta("criterion:greeted"),
@@ -426,8 +426,8 @@ mod tests {
                 policies: vec![],
                 criteria: vec![],
             }],
-            entrance_criteria: vec![CriterionRef(make_id("criterion:registered"))],
-            exit_criteria: vec![CriterionRef(make_id("criterion:onboarded"))],
+            entrance_criteria: vec![CriterionRef::new_unchecked(make_id("criterion:registered"))],
+            exit_criteria: vec![CriterionRef::new_unchecked(make_id("criterion:onboarded"))],
             policies: vec![],
             criteria: vec![],
         };

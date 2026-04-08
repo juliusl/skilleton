@@ -34,14 +34,14 @@ mod tests {
         let meta = ItemMeta {
             id: make_id("task:guarded"),
             conditions: vec![
-                CriterionRef(make_id("criterion:enabled")),
-                CriterionRef(make_id("criterion:authorized")),
+                CriterionRef::new_unchecked(make_id("criterion:enabled")),
+                CriterionRef::new_unchecked(make_id("criterion:authorized")),
             ],
         };
         assert_eq!(meta.conditions.len(), 2);
         assert_eq!(
             meta.conditions[0],
-            CriterionRef(make_id("criterion:enabled"))
+            CriterionRef::new_unchecked(make_id("criterion:enabled"))
         );
     }
 
@@ -50,7 +50,7 @@ mod tests {
         let meta = ItemMeta {
             id: make_id("task:guarded"),
             conditions: vec![
-                CriterionRef(make_id("criterion:enabled")),
+                CriterionRef::new_unchecked(make_id("criterion:enabled")),
             ],
         };
         let serialized = toml::to_string(&meta).unwrap();

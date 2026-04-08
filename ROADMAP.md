@@ -36,14 +36,14 @@ Since semantics and ordering matters, it's actually difficult to make changes an
         - Will be the entrypoint for any type of compilation or analysis tooling
 - **Open**: Define item ID scheme (e.g. UUIDs, namespaced paths, human-readable slugs)
 - **Open**: Design cross-procedure reference model — can `Tasks` or `Steps` reference other `Procedures`? If so, define cycle constraints and traversal semantics
-- **Follow-up (code review)**: Add type-prefix validation to `CriterionRef` constructor so it enforces the inner `ItemId` has `TypePrefix::Criterion`
-- **Follow-up (code review, nit)**: Consider making `TypePrefix::as_str` public for downstream display/serialization use
-- **Follow-up (code review, nit)**: Consider grouping validation functions if more rules are added (e.g., hierarchy depth, slug uniqueness)
-- **Follow-up (code review, nit)**: Consider `Cow<'_, str>` or `&str` for `Segment.slug` to avoid allocation in read-only inspection
-- **Follow-up (code review, nit)**: Consider renaming `validate_references` to `validate_invocation_references` to avoid ambiguity when criterion-reference validation is added
-- **Follow-up (QA plan)**: Add `trybuild` compile-fail test proving invalid compositions (e.g., `Step` containing a `Procedure`) are rejected at compile time
-- **Follow-up (QA plan)**: Add doc comment to `CriterionRef` documenting that referential integrity is the caller's responsibility
-- **Follow-up (code review)**: Enforce that `ItemId` type-prefix matches the struct type it identifies (e.g., `Procedure` must have a `procedure:` prefix)
+- **Resolved**: Added `CriterionRef::new()` constructor with type-prefix validation enforcing `TypePrefix::Criterion`
+- **Resolved**: Made `TypePrefix::as_str` public for downstream display/serialization use
+- **Resolved (deferred)**: Validation grouping — revisit when more rules are added; currently organized by function naming convention
+- **Won't Fix**: `Cow<'_, str>` or `&str` for `Segment.slug` — pervasive API change (lifetime propagation to ItemId and all containing structs) for marginal allocation savings
+- **Resolved**: Renamed `validate_references` to `validate_invocation_references` to avoid ambiguity with `validate_criterion_references`
+- **Follow-up (QA plan)**: Add `trybuild` compile-fail test proving invalid compositions (e.g., `Step` containing a `Procedure`) are rejected at compile time — **Deferred**: Rust's type system already prevents invalid compositions at compile time
+- **Resolved**: Added doc comment to `CriterionRef` documenting referential integrity is the caller's responsibility
+- **Resolved**: Added `validate_type_prefixes()` to enforce that `ItemId` type-prefix matches the struct type it identifies
 
 ### Milestone 2 <!-- status: complete -->
 - Initial working data-format draft
@@ -53,9 +53,9 @@ Since semantics and ordering matters, it's actually difficult to make changes an
 - DSL compiler and analysis tool, to analyze conflicts
     - **Open**: Define what constitutes a `Policy` conflict (contradictory text, overlapping scope, incompatible constraints, etc.)
 - Item storage implementation, that can store and fetch items
-- **Follow-up (code review)**: Add `CriterionRef` type-prefix validation — enforce the inner `ItemId` has `TypePrefix::Criterion` during semantic validation in the compiler
-- **Follow-up (code review)**: Add slug-filename consistency validation in `SkillLoader` — verify procedure file's `ItemId` slug matches its filename stem
-- **Follow-up (QA)**: Reconcile flat vs hierarchical `ItemId` convention — test helpers use flat IDs (`policy:global`) but real skills need hierarchical paths (`skill:s.policy:global`)
+- **Resolved**: Added `CriterionRef` type-prefix validation — `CriterionRef::new()` enforces criterion prefix; `Deserialize` impl rejects non-criterion; `validate_criterion_references()` provides semantic validation in the compiler
+- **Resolved**: Added slug-filename consistency validation in `SkillLoader` — rejects procedure files where filename stem does not match ItemId slug
+- **Resolved (documented)**: Flat vs hierarchical `ItemId` convention — flat IDs are valid for test helpers and internal references; hierarchical paths required for skill files. Both formats parse correctly; `ItemId::type_prefix()` accessor added for convenience
 
 ### Milestone 3
 - Create CLI to initialize, check, and build `Procedures` and `Policies`

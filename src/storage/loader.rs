@@ -68,9 +68,25 @@ impl SkillLoader {
                     })?;
                 let proc_file: ProcedureFile =
                     toml::from_str(&proc_content).map_err(|e| StorageError::ParseError {
-                        path: proc_path,
+                        path: proc_path.clone(),
                         source: e,
                     })?;
+
+                // Validate slug-filename consistency (ADR-0006, M2 follow-up).
+                let filename_stem = proc_path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("")
+                    .to_string();
+                let item_slug = extract_item_slug(&proc_file.procedure.meta.id);
+                if filename_stem != item_slug {
+                    return Err(StorageError::SlugFilenameMismatch {
+                        path: proc_path,
+                        filename_stem,
+                        item_slug,
+                    });
+                }
+
                 procedures.push(proc_file.procedure);
             }
         }
@@ -85,10 +101,19 @@ impl SkillLoader {
     }
 }
 
+/// Extract the slug from the last segment of an ItemId.
+fn extract_item_slug(id: &crate::types::ItemId) -> String {
+    let segments = id.segments();
+    segments
+        .last()
+        .map(|s| s.slug.clone())
+        .unwrap_or_default()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{ItemId, ItemMeta, SkillMeta, Policy, Procedure};
+    use crate::types::{ItemId, ItemMeta, SkillMeta, Procedure};
     use crate::storage::SkillWriter;
 
     fn make_id(s: &str) -> ItemId {
@@ -237,5 +262,44 @@ mod tests {
         // Should be sorted alphabetically: alpha before zebra
         assert_eq!(loaded1.procedures[0].meta.id, make_id("procedure:alpha"));
         assert_eq!(loaded1.procedures[1].meta.id, make_id("procedure:zebra"));
+    }
+
+    #[test]
+    fn load_rejects_slug_filename_mismatch() {
+        let dir = tempfile::tempdir().unwrap();
+        let skill_dir = dir.path().join("test");
+        let proc_dir = skill_dir.join("procedures");
+        std::fs::create_dir_all(&proc_dir).unwrap();
+
+        // Write a valid skill.toml
+        let skill_toml = r#"
+[skill]
+id = "skill:test"
+name = "Test"
+description = "Test"
+conditions = []
+policies = []
+"#;
+        std::fs::write(skill_dir.join("skill.toml"), skill_toml).unwrap();
+
+        // Write a procedure file with a mismatched filename
+        let proc_toml = r#"
+[procedure]
+id = "procedure:actual-name"
+conditions = []
+steps = []
+entrance_criteria = []
+exit_criteria = []
+policies = []
+"#;
+        std::fs::write(proc_dir.join("wrong-name.toml"), proc_toml).unwrap();
+
+        let result = SkillLoader::load(&skill_dir);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, StorageError::SlugFilenameMismatch { .. }));
+        let msg = format!("{err}");
+        assert!(msg.contains("wrong-name"));
+        assert!(msg.contains("actual-name"));
     }
 }
