@@ -66,7 +66,7 @@ pub fn validate_references(skill: &Skill) -> Result<(), Vec<ReferenceError>> {
         }
     }
 
-    // Cycle detection via topological sort (Kahn's algorithm)
+    // Cycle detection via DFS (three-color marking)
     if let Some(cycle) = detect_cycle(&graph) {
         errors.push(ReferenceError::CycleDetected {
             cycle: cycle.into_iter().cloned().collect(),
