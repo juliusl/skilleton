@@ -1,7 +1,7 @@
 # 6. Define file organization for skill definitions
 
 Date: 2026-04-08
-Status: Ready
+Status: Planned
 Last Updated: 2026-04-08
 Links: ADR-0002, ADR-0003, ADR-0004, ADR-0005
 
