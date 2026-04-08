@@ -105,22 +105,22 @@ fn cmd_check(path: &PathBuf) -> i32 {
     if let Err(ref_errors) = validate_invocation_references(&skill) {
         for e in &ref_errors {
             eprintln!("error: {}", e);
-            errors += ref_errors.len();
         }
+        errors += ref_errors.len();
     }
 
     if let Err(crit_errors) = validate_criterion_references(&skill) {
         for e in &crit_errors {
             eprintln!("error: {}", e);
-            errors += crit_errors.len();
         }
+        errors += crit_errors.len();
     }
 
     if let Err(prefix_errors) = validate_type_prefixes(&skill) {
         for e in &prefix_errors {
             eprintln!("error: {}", e);
-            errors += prefix_errors.len();
         }
+        errors += prefix_errors.len();
     }
 
     let overlaps = detect_policy_overlaps(&skill);

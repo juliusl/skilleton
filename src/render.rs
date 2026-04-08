@@ -487,4 +487,19 @@ mod tests {
         assert!(first_pos < second_pos);
         assert!(second_pos < third_pos);
     }
+
+    #[test]
+    fn heading_hierarchy_uses_correct_levels() {
+        let skill = make_skill_with_policies_and_procedures();
+        let md = render_skill(&skill);
+        // Skill title: #
+        assert!(md.contains("# Test Skill\n"));
+        // Skill-level sections: ##
+        assert!(md.contains("## Policies\n"));
+        assert!(md.contains("## Procedures\n"));
+        // Procedure: ###
+        assert!(md.contains("### procedure:p1 — Procedure\n"));
+        // Step: ####
+        assert!(md.contains("#### step:s1 — Step\n"));
+    }
 }
