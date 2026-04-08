@@ -22,7 +22,7 @@ Since semantics and ordering matters, it's actually difficult to make changes an
 
 ## Milestones
 
-### Milestone 1
+### Milestone 1 <!-- status: complete -->
 - Initial item abstraction and relationship definitions:
     - Two types `Hierarchy` based and `Singleton` based
     - `Policy`: A constraint or rule that **MUST** be followed. Must be a `Singleton`.
