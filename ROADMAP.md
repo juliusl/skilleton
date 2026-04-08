@@ -53,6 +53,9 @@ Since semantics and ordering matters, it's actually difficult to make changes an
 - DSL compiler and analysis tool, to analyze conflicts
     - **Open**: Define what constitutes a `Policy` conflict (contradictory text, overlapping scope, incompatible constraints, etc.)
 - Item storage implementation, that can store and fetch items
+- **Follow-up (code review)**: Add `CriterionRef` type-prefix validation — enforce the inner `ItemId` has `TypePrefix::Criterion` during semantic validation in the compiler
+- **Follow-up (code review)**: Add slug-filename consistency validation in `SkillLoader` — verify procedure file's `ItemId` slug matches its filename stem
+- **Follow-up (QA)**: Reconcile flat vs hierarchical `ItemId` convention — test helpers use flat IDs (`policy:global`) but real skills need hierarchical paths (`skill:s.policy:global`)
 
 ### Milestone 3
 - Create CLI to initialize, check, and build `Procedures` and `Policies`
