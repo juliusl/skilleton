@@ -1,0 +1,49 @@
+[procedure]
+id = "procedure:welcome"
+conditions = []
+entrance_criteria = []
+exit_criteria = ["criterion:user-onboarded"]
+
+[[procedure.policies]]
+id = "policy:greet-by-name"
+conditions = []
+text = "Address the user by their display name"
+
+[[procedure.steps]]
+id = "step:greet"
+conditions = []
+completion_criteria = ["criterion:greeted"]
+
+[[procedure.steps.policies]]
+id = "policy:use-emoji"
+conditions = []
+text = "Include a wave emoji in the greeting"
+
+[[procedure.steps.criteria]]
+id = "criterion:greeted"
+conditions = []
+description = "User has received a personalized greeting"
+
+[[procedure.steps.tasks]]
+id = "task:send-greeting"
+conditions = []
+subject = "User"
+action = "Send a personalized welcome message"
+
+[[procedure.steps.tasks]]
+id = "task:show-tour"
+conditions = []
+subject = "Dashboard"
+action = "Display the guided tour overlay"
+
+[[procedure.steps]]
+id = "step:confirm"
+conditions = []
+completion_criteria = ["criterion:user-onboarded"]
+policies = []
+
+[[procedure.steps.tasks]]
+id = "task:ask-confirmation"
+conditions = []
+subject = "User"
+action = "Ask the user to confirm they completed the tour"

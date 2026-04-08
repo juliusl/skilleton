@@ -1,0 +1,20 @@
+[skill]
+id = "skill:onboarding"
+conditions = []
+name = "Onboarding"
+description = "A simple agent onboarding workflow for pipeline validation"
+
+[[skill.policies]]
+id = "policy:be-friendly"
+conditions = []
+text = "Always use a friendly and welcoming tone"
+
+[[skill.policies]]
+id = "policy:no-jargon"
+conditions = []
+text = "Avoid technical jargon when addressing new users"
+
+[[skill.criteria]]
+id = "criterion:user-onboarded"
+conditions = []
+description = "The user has completed all onboarding steps"
