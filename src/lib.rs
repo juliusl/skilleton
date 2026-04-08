@@ -6,3 +6,5 @@ pub mod types;
 pub mod validate;
 /// Policy conflict detection via scope-overlap reporting.
 pub mod conflict;
+/// Skill file I/O and repository pattern for storage/retrieval.
+pub mod storage;
