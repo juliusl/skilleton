@@ -1,9 +1,11 @@
 //! Common metadata shared by all item types.
 
+use serde::{Deserialize, Serialize};
+
 use super::{ItemId, CriterionRef};
 
 /// Common metadata shared by all item types.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ItemMeta {
     pub id: ItemId,
     /// Conditional criteria — if empty, the item is implicitly Active.
@@ -41,5 +43,18 @@ mod tests {
             meta.conditions[0],
             CriterionRef(make_id("criterion:enabled"))
         );
+    }
+
+    #[test]
+    fn serde_item_meta_round_trips() {
+        let meta = ItemMeta {
+            id: make_id("task:guarded"),
+            conditions: vec![
+                CriterionRef(make_id("criterion:enabled")),
+            ],
+        };
+        let serialized = toml::to_string(&meta).unwrap();
+        let deserialized: ItemMeta = toml::from_str(&serialized).unwrap();
+        assert_eq!(meta, deserialized);
     }
 }
