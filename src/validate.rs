@@ -170,6 +170,7 @@ mod tests {
             tasks,
             completion_criteria: vec![],
             policies: vec![],
+            criteria: vec![],
         }
     }
 
@@ -180,6 +181,7 @@ mod tests {
             entrance_criteria: vec![],
             exit_criteria: vec![],
             policies: vec![],
+            criteria: vec![],
         }
     }
 
@@ -200,6 +202,7 @@ mod tests {
                 ]),
             ],
             policies: vec![],
+            criteria: vec![],
         };
         assert!(validate_references(&skill).is_ok());
     }
@@ -217,6 +220,7 @@ mod tests {
                 ]),
             ],
             policies: vec![],
+            criteria: vec![],
         };
         let errs = validate_references(&skill).unwrap_err();
         assert!(errs.iter().any(|e| matches!(e, ReferenceError::MissingProcedure { .. })));
@@ -236,6 +240,7 @@ mod tests {
                 ]),
             ],
             policies: vec![],
+            criteria: vec![],
         };
         let errs = validate_references(&skill).unwrap_err();
         assert!(errs.iter().any(|e| matches!(e, ReferenceError::CycleDetected { .. })));
@@ -258,6 +263,7 @@ mod tests {
                 ]),
             ],
             policies: vec![],
+            criteria: vec![],
         };
         let errs = validate_references(&skill).unwrap_err();
         assert!(errs.iter().any(|e| matches!(e, ReferenceError::CycleDetected { .. })));
@@ -274,6 +280,7 @@ mod tests {
                 ]),
             ],
             policies: vec![],
+            criteria: vec![],
         };
         let errs = validate_references(&skill).unwrap_err();
         assert!(errs.iter().any(|e| matches!(e, ReferenceError::CycleDetected { .. })));
@@ -290,6 +297,7 @@ mod tests {
                 ]),
             ],
             policies: vec![],
+            criteria: vec![],
         };
         assert!(validate_references(&skill).is_ok());
     }
@@ -307,6 +315,7 @@ mod tests {
                 ]),
             ],
             policies: vec![],
+            criteria: vec![],
         };
         let errs = validate_references(&skill).unwrap_err();
         let msg = format!("{}", errs[0]);
@@ -340,6 +349,7 @@ mod tests {
                 ]),
             ],
             policies: vec![],
+            criteria: vec![],
         };
         assert!(validate_references(&skill).is_ok());
     }
@@ -358,6 +368,7 @@ mod tests {
                 ]),
             ],
             policies: vec![],
+            criteria: vec![],
         };
         let errs = validate_references(&skill).unwrap_err();
         let cycle = errs.iter().find_map(|e| match e {

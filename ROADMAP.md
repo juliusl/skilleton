@@ -45,7 +45,7 @@ Since semantics and ordering matters, it's actually difficult to make changes an
 - **Follow-up (QA plan)**: Add doc comment to `CriterionRef` documenting that referential integrity is the caller's responsibility
 - **Follow-up (code review)**: Enforce that `ItemId` type-prefix matches the struct type it identifies (e.g., `Procedure` must have a `procedure:` prefix)
 
-### Milestone 2
+### Milestone 2 <!-- status: complete -->
 - Initial working data-format draft
     - **Open**: Serialization format decision (TOML, YAML, custom DSL, etc.) — must be settled before DSL and Rust type design are finalized
 - DSL implementation for defining policies and procedures

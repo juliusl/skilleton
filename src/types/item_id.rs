@@ -5,6 +5,8 @@
 
 use std::fmt;
 
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
 /// Valid type prefixes for item path segments.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TypePrefix {
@@ -185,12 +187,37 @@ impl fmt::Display for ItemId {
     }
 }
 
+impl Serialize for ItemId {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for ItemId {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        ItemId::parse(&s).map_err(serde::de::Error::custom)
+    }
+}
+
 /// Reference to a Criterion item by its ItemId.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CriterionRef(pub ItemId);
 
+impl Serialize for CriterionRef {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.0.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for CriterionRef {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        ItemId::deserialize(deserializer).map(CriterionRef)
+    }
+}
+
 /// Placeholder for agentskills.io specification metadata.
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SkillMeta {
     pub name: String,
     pub description: String,
@@ -338,5 +365,59 @@ mod tests {
     #[test]
     fn parse_accepts_slug_with_digits() {
         assert!(ItemId::parse("skill:auth2").is_ok());
+    }
+
+    #[test]
+    fn serde_item_id_round_trips_as_string() {
+        #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+        struct Wrapper { id: ItemId }
+        let w = Wrapper { id: ItemId::parse("skill:onboarding.procedure:auth").unwrap() };
+        let serialized = toml::to_string(&w).unwrap();
+        assert!(serialized.contains("skill:onboarding.procedure:auth"));
+        let deserialized: Wrapper = toml::from_str(&serialized).unwrap();
+        assert_eq!(w, deserialized);
+    }
+
+    #[test]
+    fn serde_item_id_serializes_as_string_not_struct() {
+        #[derive(serde::Serialize)]
+        struct Wrapper { id: ItemId }
+        let w = Wrapper { id: ItemId::parse("skill:onboarding").unwrap() };
+        let serialized = toml::to_string(&w).unwrap();
+        assert!(!serialized.contains("[id]"));
+        assert!(serialized.starts_with("id = \"skill:onboarding\""));
+    }
+
+    #[test]
+    fn serde_item_id_rejects_malformed_string() {
+        #[derive(serde::Deserialize)]
+        struct Wrapper { id: ItemId }
+        let result: Result<Wrapper, _> = toml::from_str("id = \"invalid\"");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn serde_criterion_ref_round_trips() {
+        #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+        struct Wrapper { cref: CriterionRef }
+        let w = Wrapper { cref: CriterionRef(ItemId::parse("criterion:enabled").unwrap()) };
+        let serialized = toml::to_string(&w).unwrap();
+        let deserialized: Wrapper = toml::from_str(&serialized).unwrap();
+        assert_eq!(w, deserialized);
+    }
+
+    #[test]
+    fn serde_skill_meta_round_trips() {
+        #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+        struct Wrapper { meta: SkillMeta }
+        let w = Wrapper {
+            meta: SkillMeta {
+                name: "Onboarding".to_string(),
+                description: "New user onboarding flow".to_string(),
+            },
+        };
+        let serialized = toml::to_string(&w).unwrap();
+        let deserialized: Wrapper = toml::from_str(&serialized).unwrap();
+        assert_eq!(w, deserialized);
     }
 }
