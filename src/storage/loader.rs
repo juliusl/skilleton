@@ -2,35 +2,9 @@
 
 use std::path::Path;
 
-use serde::{Deserialize, Serialize};
-
+use super::formats::{ProcedureFile, SkillFile};
 use super::StorageError;
-use crate::types::{Procedure, Skill, SkillMeta, Criterion, ItemMeta, Policy};
-
-/// Wrapper for skill.toml deserialization.
-#[derive(Serialize, Deserialize)]
-struct SkillFile {
-    skill: SkillManifest,
-}
-
-/// Skill metadata from skill.toml (without procedures).
-#[derive(Serialize, Deserialize)]
-struct SkillManifest {
-    #[serde(flatten)]
-    meta: ItemMeta,
-    #[serde(flatten)]
-    metadata: SkillMeta,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    policies: Vec<Policy>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    criteria: Vec<Criterion>,
-}
-
-/// Wrapper for procedure .toml deserialization.
-#[derive(Serialize, Deserialize)]
-struct ProcedureFile {
-    procedure: Procedure,
-}
+use crate::types::Skill;
 
 /// Reads a Skill from the ADR-0006 directory layout.
 pub struct SkillLoader;

@@ -3,6 +3,7 @@
 
 mod error;
 mod file;
+mod formats;
 mod loader;
 mod memory;
 mod traits;

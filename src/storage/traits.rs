@@ -18,11 +18,17 @@ pub trait SkillRepository {
 /// Owned reference to a specific item kind.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ItemRef {
+    /// Reference to a Skill.
     Skill(Skill),
+    /// Reference to a Procedure.
     Procedure(Procedure),
+    /// Reference to a Step.
     Step(Step),
+    /// Reference to a Task.
     Task(Task),
+    /// Reference to a Policy.
     Policy(Policy),
+    /// Reference to a Criterion.
     Criterion(Criterion),
 }
 

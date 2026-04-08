@@ -2,35 +2,9 @@
 
 use std::path::Path;
 
-use serde::{Deserialize, Serialize};
-
+use super::formats::{ProcedureFile, SkillFile, SkillManifest};
 use super::StorageError;
-use crate::types::{Criterion, ItemMeta, Policy, Procedure, Skill, SkillMeta};
-
-/// Wrapper for skill.toml — skill metadata, policies, and criteria; no procedures.
-#[derive(Serialize, Deserialize)]
-struct SkillFile {
-    skill: SkillManifest,
-}
-
-/// Skill metadata for skill.toml (Skill minus procedures).
-#[derive(Serialize, Deserialize)]
-struct SkillManifest {
-    #[serde(flatten)]
-    meta: ItemMeta,
-    #[serde(flatten)]
-    metadata: SkillMeta,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    policies: Vec<Policy>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    criteria: Vec<Criterion>,
-}
-
-/// Wrapper for procedures/<slug>.toml.
-#[derive(Serialize, Deserialize)]
-struct ProcedureFile {
-    procedure: Procedure,
-}
+use crate::types::Skill;
 
 /// Writes a Skill to the ADR-0006 directory layout.
 pub struct SkillWriter;
@@ -49,6 +23,27 @@ impl SkillWriter {
             path: procedures_dir.clone(),
             source: e,
         })?;
+
+        // Remove stale procedure files before writing new ones.
+        // Prevents a removed procedure from persisting on disk after re-write.
+        if procedures_dir.exists() {
+            for entry in std::fs::read_dir(&procedures_dir).map_err(|e| StorageError::IoError {
+                path: procedures_dir.clone(),
+                source: e,
+            })? {
+                let entry = entry.map_err(|e| StorageError::IoError {
+                    path: procedures_dir.clone(),
+                    source: e,
+                })?;
+                let path = entry.path();
+                if path.extension().is_some_and(|ext| ext == "toml") {
+                    std::fs::remove_file(&path).map_err(|e| StorageError::IoError {
+                        path: path.clone(),
+                        source: e,
+                    })?;
+                }
+            }
+        }
 
         // Write skill.toml
         let manifest = SkillFile {

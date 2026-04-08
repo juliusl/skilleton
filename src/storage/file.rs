@@ -42,7 +42,13 @@ impl SkillRepository for FileRepository {
             })
         })?;
 
-        for entry in entries.flatten() {
+        for entry in entries {
+            let entry = entry.map_err(|e| {
+                RepositoryError::Storage(StorageError::IoError {
+                    path: self.root.clone(),
+                    source: e,
+                })
+            })?;
             let path = entry.path();
             if path.is_dir() && path.join("skill.toml").exists() {
                 if let Some(name) = path.file_name().and_then(|n| n.to_str()) {

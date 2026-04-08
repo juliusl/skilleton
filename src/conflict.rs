@@ -3,7 +3,7 @@
 //! Computes effective policy sets by walking the skill hierarchy,
 //! then detects cross-origin policy convergence (ADR-0007).
 
-use crate::types::{Criterion, ItemId, Policy, Skill};
+use crate::types::{ItemId, Policy, Skill};
 
 /// Tracks where a policy was defined and how it reached this scope.
 #[derive(Debug, Clone, PartialEq)]
@@ -111,8 +111,12 @@ pub fn compute_effective_policies(skill: &Skill) -> Vec<EffectivePolicies> {
                 policies: step_policies.clone(),
             });
 
-            // Handle cross-procedure invocations: merge callee's effective
+            // Handle cross-procedure invocations: merge callee's procedure-level
             // policies at the invocation Task scope.
+            // Note: callee step-level policies are internal to the callee's execution
+            // and do not propagate to the caller's invocation point. Skill-level
+            // policies are already in the caller's inheritance chain (both procedures
+            // share the same parent Skill), so only callee.policies adds new origins.
             for task in &step.tasks {
                 if let Some(ref invoked_id) = task.invokes {
                     // Find the callee procedure
@@ -217,6 +221,8 @@ fn check_same_level_policies(
 }
 
 /// Check if all pairs of policies have mutual compatible_with annotations.
+/// O(n²) where n is the number of policies — acceptable because policies per scope
+/// are expected to be small (single digits).
 fn all_pairs_compatible(policies: &[PolicyOrigin]) -> bool {
     if policies.len() <= 1 {
         return true;
