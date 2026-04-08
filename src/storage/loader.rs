@@ -39,19 +39,22 @@ impl SkillLoader {
         let mut procedures = Vec::new();
 
         if procedures_dir.is_dir() {
-            let mut entries: Vec<_> = std::fs::read_dir(&procedures_dir)
+            let read_entries = std::fs::read_dir(&procedures_dir)
                 .map_err(|e| StorageError::IoError {
                     path: procedures_dir.clone(),
                     source: e,
-                })?
-                .filter_map(|entry| entry.ok())
-                .filter(|entry| {
-                    entry
-                        .path()
-                        .extension()
-                        .is_some_and(|ext| ext == "toml")
-                })
-                .collect();
+                })?;
+
+            let mut entries = Vec::new();
+            for entry in read_entries {
+                let entry = entry.map_err(|e| StorageError::IoError {
+                    path: procedures_dir.clone(),
+                    source: e,
+                })?;
+                if entry.path().extension().is_some_and(|ext| ext == "toml") {
+                    entries.push(entry);
+                }
+            }
 
             // Sort by filename for deterministic ordering across platforms.
             entries.sort_by_key(|e| e.file_name());
