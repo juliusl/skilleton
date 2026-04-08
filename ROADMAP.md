@@ -41,6 +41,8 @@ Since semantics and ordering matters, it's actually difficult to make changes an
 - **Follow-up (code review, nit)**: Consider grouping validation functions if more rules are added (e.g., hierarchy depth, slug uniqueness)
 - **Follow-up (code review, nit)**: Consider `Cow<'_, str>` or `&str` for `Segment.slug` to avoid allocation in read-only inspection
 - **Follow-up (code review, nit)**: Consider renaming `validate_references` to `validate_invocation_references` to avoid ambiguity when criterion-reference validation is added
+- **Follow-up (QA plan)**: Add `trybuild` compile-fail test proving invalid compositions (e.g., `Step` containing a `Procedure`) are rejected at compile time
+- **Follow-up (QA plan)**: Add doc comment to `CriterionRef` documenting that referential integrity is the caller's responsibility
 
 ### Milestone 2
 - Initial working data-format draft
