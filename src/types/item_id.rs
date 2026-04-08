@@ -316,4 +316,22 @@ mod tests {
         let child = parent.append(TypePrefix::Procedure, "auth").unwrap();
         assert_eq!(child, ItemId::parse("skill:s1.procedure:auth").unwrap());
     }
+
+    // -- QA plan findings --
+
+    #[test]
+    fn parse_accepts_exactly_50_char_slug() {
+        let slug = "a".repeat(50);
+        assert!(ItemId::parse(&format!("skill:{slug}")).is_ok());
+    }
+
+    #[test]
+    fn parse_rejects_empty_slug_after_colon() {
+        assert!(ItemId::parse("skill:").is_err());
+    }
+
+    #[test]
+    fn parse_accepts_slug_with_digits() {
+        assert!(ItemId::parse("skill:auth2").is_ok());
+    }
 }

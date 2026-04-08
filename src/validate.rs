@@ -66,7 +66,9 @@ pub fn validate_references(skill: &Skill) -> Result<(), Vec<ReferenceError>> {
         }
     }
 
-    // Cycle detection via DFS (three-color marking)
+    // Cycle detection via DFS (three-color marking).
+    // Reports the first cycle found — multiple independent cycles require
+    // iterative fix-and-revalidate.
     if let Some(cycle) = detect_cycle(&graph) {
         errors.push(ReferenceError::CycleDetected {
             cycle: cycle.into_iter().cloned().collect(),
@@ -303,5 +305,59 @@ mod tests {
         let msg = format!("{}", errs[0]);
         assert!(msg.contains("task:a1"));
         assert!(msg.contains("procedure:missing"));
+    }
+
+    // -- QA plan findings --
+
+    #[test]
+    fn diamond_dag_passes() {
+        // A→B, A→C, B→D, C→D (valid DAG with shared descendant)
+        let skill = Skill {
+            meta: make_meta("skill:test"),
+            metadata: SkillMeta::default(),
+            procedures: vec![
+                make_procedure("procedure:a", vec![
+                    make_step("step:a1", vec![
+                        make_task("task:a1", Some("procedure:b")),
+                        make_task("task:a2", Some("procedure:c")),
+                    ]),
+                ]),
+                make_procedure("procedure:b", vec![
+                    make_step("step:b1", vec![make_task("task:b1", Some("procedure:d"))]),
+                ]),
+                make_procedure("procedure:c", vec![
+                    make_step("step:c1", vec![make_task("task:c1", Some("procedure:d"))]),
+                ]),
+                make_procedure("procedure:d", vec![
+                    make_step("step:d1", vec![make_task("task:d1", None)]),
+                ]),
+            ],
+            policies: vec![],
+        };
+        assert!(validate_references(&skill).is_ok());
+    }
+
+    #[test]
+    fn direct_cycle_path_contains_involved_nodes() {
+        let skill = Skill {
+            meta: make_meta("skill:test"),
+            metadata: SkillMeta::default(),
+            procedures: vec![
+                make_procedure("procedure:a", vec![
+                    make_step("step:a1", vec![make_task("task:a1", Some("procedure:b"))]),
+                ]),
+                make_procedure("procedure:b", vec![
+                    make_step("step:b1", vec![make_task("task:b1", Some("procedure:a"))]),
+                ]),
+            ],
+            policies: vec![],
+        };
+        let errs = validate_references(&skill).unwrap_err();
+        let cycle = errs.iter().find_map(|e| match e {
+            ReferenceError::CycleDetected { cycle } => Some(cycle),
+            _ => None,
+        }).expect("should have a cycle error");
+        assert!(cycle.contains(&make_id("procedure:a")));
+        assert!(cycle.contains(&make_id("procedure:b")));
     }
 }
