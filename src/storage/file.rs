@@ -21,6 +21,10 @@ impl FileRepository {
 
 impl SkillRepository for FileRepository {
     fn load_skill(&self, name: &str) -> Result<Skill, RepositoryError> {
+        // Reject names with path separators or traversal sequences.
+        if name.contains('/') || name.contains('\\') || name.contains("..") || name.is_empty() {
+            return Err(RepositoryError::NotFound(name.to_string()));
+        }
         let skill_dir = self.root.join(name);
         SkillLoader::load(&skill_dir).map_err(RepositoryError::Storage)
     }
@@ -140,5 +144,15 @@ mod tests {
         let repo = FileRepository::new(dir.path().to_path_buf());
         let result = repo.load_skill("bad");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn load_skill_rejects_path_traversal() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = FileRepository::new(dir.path().to_path_buf());
+        assert!(repo.load_skill("../../etc").is_err());
+        assert!(repo.load_skill("../secret").is_err());
+        assert!(repo.load_skill("foo/bar").is_err());
+        assert!(repo.load_skill("").is_err());
     }
 }
