@@ -69,14 +69,14 @@ Since semantics and ordering matters, it's actually difficult to make changes an
 - **Resolved**: Added `SkillWriter::write_to(dir, skill)` for direct writes; `cmd_init` no longer needs `path.parent()` workaround
 - **Resolved**: Raised `detect_policy_overlaps` same-level threshold from 2 to 3 — two complementary policies no longer flagged as overlapping
 - **Resolved**: Template-based Markdown rendering via Mustache/ramhorns (ADR-0011) — `skilleton build --template <file>` for custom templates; default template reproduces original output
-- **Follow-up (M5)**: Evaluate `ramhorns` dependency weight — pulls `pulldown-cmark`, `logos`, and several transitive crates; consider lighter alternatives (`upon`, `rustache`) if binary size matters
-- **Follow-up (M5)**: Add partial template support (multi-file templates) — deferred from ADR-0011 Decision §5
-- **Follow-up (M5)**: Cache parsed `DEFAULT_TEMPLATE` via `LazyLock` — currently re-parsed on every `render_skill()` call
-- **Follow-up (M5)**: Replace `Result<String, String>` with structured `RenderError` enum on `render_skill_with_template` public API
 - Finalize all schemas and specifications
 - Stabilize data model before building visual tooling
 
 ### Milestone 5
+- **Follow-up (M5)**: Evaluate `ramhorns` dependency weight — pulls `pulldown-cmark`, `logos`, and several transitive crates; consider lighter alternatives (`upon`, `rustache`) if binary size matters
+- **Follow-up (M5)**: Add partial template support (multi-file templates) — deferred from ADR-0011 Decision §5
+- **Follow-up (M5)**: Cache parsed `DEFAULT_TEMPLATE` via `LazyLock` — currently re-parsed on every `render_skill()` call
+- **Follow-up (M5)**: Replace `Result<String, String>` with structured `RenderError` enum on `render_skill_with_template` public API
 - Visual node-based editor for skilleton based skills
     - Should be able to make and test changes
     - Should be able to list and access multiple skills
