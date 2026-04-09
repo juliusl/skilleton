@@ -115,10 +115,7 @@ fn cmd_init(path: &Path) -> i32 {
         criteria: vec![],
     };
 
-    // SkillWriter::write(root, skill) creates <root>/<slug>/...
-    // We want files at <path>/, so root = path.parent()
-    let root = path.parent().unwrap_or(path);
-    if let Err(e) = SkillWriter::write(root, &skill) {
+    if let Err(e) = SkillWriter::write_to(path, &skill) {
         eprintln!("error: failed to initialize skill: {}", e);
         return 1;
     }

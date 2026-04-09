@@ -17,7 +17,15 @@ impl SkillWriter {
     pub fn write(root: &Path, skill: &Skill) -> Result<(), StorageError> {
         let skill_slug = extract_slug(&skill.meta.id.to_string());
         let skill_dir = root.join(&skill_slug);
-        let procedures_dir = skill_dir.join("procedures");
+        Self::write_to(&skill_dir, skill)
+    }
+
+    /// Write a Skill directly to the given directory.
+    ///
+    /// Files land at `dir/skill.toml` and `dir/procedures/<slug>.toml`.
+    /// Unlike `write()`, this does not append a slug subdirectory.
+    pub fn write_to(dir: &Path, skill: &Skill) -> Result<(), StorageError> {
+        let procedures_dir = dir.join("procedures");
 
         std::fs::create_dir_all(&procedures_dir).map_err(|e| StorageError::IoError {
             path: procedures_dir.clone(),
@@ -54,7 +62,7 @@ impl SkillWriter {
                 criteria: skill.criteria.clone(),
             },
         };
-        let skill_toml_path = skill_dir.join("skill.toml");
+        let skill_toml_path = dir.join("skill.toml");
         let content = toml::to_string_pretty(&manifest).map_err(|e| StorageError::SerializeError {
             path: skill_toml_path.clone(),
             source: e,
@@ -215,6 +223,72 @@ mod tests {
 
         let content = std::fs::read_to_string(dir.path().join("test/skill.toml")).unwrap();
         let _: SkillFile = toml::from_str(&content).unwrap();
+    }
+
+    #[test]
+    fn write_to_writes_directly_to_given_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("my-skill");
+        let skill = Skill {
+            meta: make_meta("skill:my-skill"),
+            metadata: SkillMeta {
+                name: "My Skill".to_string(),
+                description: "Direct write test".to_string(),
+            },
+            procedures: vec![Procedure {
+                meta: make_meta("procedure:p1"),
+                steps: vec![],
+                entrance_criteria: vec![],
+                exit_criteria: vec![],
+                policies: vec![],
+                criteria: vec![],
+            }],
+            policies: vec![],
+            criteria: vec![],
+        };
+        SkillWriter::write_to(&target, &skill).unwrap();
+
+        // Files land directly in target, not target/my-skill/
+        assert!(target.join("skill.toml").exists());
+        assert!(target.join("procedures/p1.toml").exists());
+    }
+
+    #[test]
+    fn write_to_produces_same_output_as_write() {
+        let write_dir = tempfile::tempdir().unwrap();
+        let write_to_dir = tempfile::tempdir().unwrap();
+        let skill = Skill {
+            meta: make_meta("skill:compare"),
+            metadata: SkillMeta {
+                name: "Compare".to_string(),
+                description: "Comparison test".to_string(),
+            },
+            procedures: vec![Procedure {
+                meta: make_meta("procedure:p1"),
+                steps: vec![],
+                entrance_criteria: vec![],
+                exit_criteria: vec![],
+                policies: vec![],
+                criteria: vec![],
+            }],
+            policies: vec![Policy {
+                meta: make_meta("policy:test"),
+                text: "Test policy".to_string(),
+                compatible_with: vec![],
+            }],
+            criteria: vec![],
+        };
+
+        SkillWriter::write(write_dir.path(), &skill).unwrap();
+        SkillWriter::write_to(&write_to_dir.path().join("compare"), &skill).unwrap();
+
+        let write_skill = std::fs::read_to_string(write_dir.path().join("compare/skill.toml")).unwrap();
+        let write_to_skill = std::fs::read_to_string(write_to_dir.path().join("compare/skill.toml")).unwrap();
+        assert_eq!(write_skill, write_to_skill);
+
+        let write_proc = std::fs::read_to_string(write_dir.path().join("compare/procedures/p1.toml")).unwrap();
+        let write_to_proc = std::fs::read_to_string(write_to_dir.path().join("compare/procedures/p1.toml")).unwrap();
+        assert_eq!(write_proc, write_to_proc);
     }
 
     use crate::types::{Policy, Procedure};
