@@ -195,12 +195,14 @@ pub fn detect_policy_overlaps(skill: &Skill) -> Vec<PolicyOverlap> {
 }
 
 /// Check if multiple policies are defined at the same hierarchy level.
+/// Only reports when 3+ policies exist at a scope without pairwise
+/// compatibility — two policies are common and usually complementary.
 fn check_same_level_policies(
     policies: &[Policy],
     scope: &ItemId,
     overlaps: &mut Vec<PolicyOverlap>,
 ) {
-    if policies.len() > 1 {
+    if policies.len() > 2 {
         let origins: Vec<PolicyOrigin> = policies
             .iter()
             .map(|p| PolicyOrigin {
@@ -445,6 +447,7 @@ mod tests {
             vec![
                 make_policy("policy:first", "First rule"),
                 make_policy("policy:second", "Second rule"),
+                make_policy("policy:third", "Third rule"),
             ],
         );
         let overlaps = detect_policy_overlaps(&skill);
@@ -473,11 +476,12 @@ mod tests {
             vec![
                 make_policy("policy:a", "Rule A"),
                 make_policy("policy:b", "Rule B"),
+                make_policy("policy:c", "Rule C"),
             ],
         );
         let overlaps = detect_policy_overlaps(&skill);
         assert_eq!(overlaps[0].target_scope, make_id("skill:test"));
-        assert_eq!(overlaps[0].converging_policies.len(), 2);
+        assert_eq!(overlaps[0].converging_policies.len(), 3);
     }
 
     #[test]
@@ -487,6 +491,7 @@ mod tests {
             vec![
                 make_policy("policy:a", "Rule A"),
                 make_policy("policy:b", "Rule B"),
+                make_policy("policy:c", "Rule C"),
             ],
         );
         let overlaps = detect_policy_overlaps(&skill);
@@ -520,7 +525,7 @@ mod tests {
     }
 
     #[test]
-    fn unilateral_compatible_with_does_not_suppress() {
+    fn unilateral_compatible_with_does_not_suppress_with_three_policies() {
         let skill = make_skill(
             vec![],
             vec![
@@ -530,19 +535,34 @@ mod tests {
                     compatible_with: vec![make_id("policy:b")],
                 },
                 make_policy("policy:b", "Rule B"),
+                make_policy("policy:c", "Rule C"),
             ],
         );
         let overlaps = detect_policy_overlaps(&skill);
-        assert_eq!(overlaps.len(), 1, "Unilateral annotation should not suppress");
+        assert_eq!(overlaps.len(), 1, "Unilateral annotation should not suppress with 3 policies");
     }
 
     #[test]
-    fn empty_compatible_with_has_no_effect() {
+    fn two_policies_at_same_level_produce_no_overlap() {
         let skill = make_skill(
             vec![],
             vec![
                 make_policy("policy:a", "Rule A"),
                 make_policy("policy:b", "Rule B"),
+            ],
+        );
+        let overlaps = detect_policy_overlaps(&skill);
+        assert!(overlaps.is_empty(), "Two policies should not trigger overlap check");
+    }
+
+    #[test]
+    fn empty_compatible_with_has_no_effect_with_three_policies() {
+        let skill = make_skill(
+            vec![],
+            vec![
+                make_policy("policy:a", "Rule A"),
+                make_policy("policy:b", "Rule B"),
+                make_policy("policy:c", "Rule C"),
             ],
         );
         let overlaps = detect_policy_overlaps(&skill);
@@ -592,6 +612,29 @@ mod tests {
         let overlaps = detect_policy_overlaps(&skill);
         assert!(overlaps.is_empty());
     }
+
+    #[test]
+    fn three_policies_with_one_incompatible_pair_produces_overlap() {
+        // A and B are compatible, but C is incompatible with both.
+        let skill = make_skill(
+            vec![],
+            vec![
+                Policy {
+                    meta: make_meta("policy:a"),
+                    text: "Rule A".to_string(),
+                    compatible_with: vec![make_id("policy:b"), make_id("policy:c")],
+                },
+                Policy {
+                    meta: make_meta("policy:b"),
+                    text: "Rule B".to_string(),
+                    compatible_with: vec![make_id("policy:a"), make_id("policy:c")],
+                },
+                make_policy("policy:c", "Rule C"),
+            ],
+        );
+        let overlaps = detect_policy_overlaps(&skill);
+        assert_eq!(overlaps.len(), 1, "One incompatible pair in three policies should produce overlap");
+    }
 }
 
 #[cfg(test)]
@@ -637,6 +680,7 @@ mod edge_case_tests {
                 compatible_with: vec![make_id("policy:a")], // self-reference
             },
             make_policy("policy:b", "Rule B"),
+            make_policy("policy:c", "Rule C"),
         ]);
         let overlaps = detect_policy_overlaps(&skill);
         assert_eq!(overlaps.len(), 1, "Self-referential annotation should not suppress overlap");
