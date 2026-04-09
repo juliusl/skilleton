@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process;
 
 use skilleton::conflict::detect_policy_overlaps;
-use skilleton::render::render_skill;
+use skilleton::render::{render_skill, render_skill_with_template};
 use skilleton::storage::{SkillLoader, SkillWriter};
 use skilleton::types::{ItemId, ItemMeta, Skill, SkillMeta};
 use skilleton::validate::{
@@ -35,6 +35,9 @@ enum Commands {
     Build {
         /// Path to the skill directory
         path: PathBuf,
+        /// Optional Mustache template file for rendering
+        #[arg(long)]
+        template: Option<PathBuf>,
     },
 }
 
@@ -43,7 +46,7 @@ fn main() {
     let exit_code = match cli.command {
         Commands::Init { path } => cmd_init(&path),
         Commands::Check { path } => cmd_check(&path),
-        Commands::Build { path } => cmd_build(&path),
+        Commands::Build { path, template } => cmd_build(&path, template.as_deref()),
     };
     process::exit(exit_code);
 }
@@ -144,7 +147,7 @@ fn cmd_check(path: &Path) -> i32 {
     }
 }
 
-fn cmd_build(path: &Path) -> i32 {
+fn cmd_build(path: &Path, template: Option<&Path>) -> i32 {
     let skill = match SkillLoader::load(path) {
         Ok(s) => s,
         Err(e) => {
@@ -161,7 +164,25 @@ fn cmd_build(path: &Path) -> i32 {
         return 1;
     }
 
-    let md = render_skill(&skill);
+    let md = match template {
+        Some(tpl_path) => {
+            let tpl_content = match std::fs::read_to_string(tpl_path) {
+                Ok(c) => c,
+                Err(e) => {
+                    eprintln!("error: failed to read template '{}': {}", tpl_path.display(), e);
+                    return 1;
+                }
+            };
+            match render_skill_with_template(&skill, &tpl_content) {
+                Ok(md) => md,
+                Err(e) => {
+                    eprintln!("error: invalid template '{}': {}", tpl_path.display(), e);
+                    return 1;
+                }
+            }
+        }
+        None => render_skill(&skill),
+    };
     print!("{}", md);
     0
 }
