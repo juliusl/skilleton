@@ -1,187 +1,238 @@
-//! Markdown rendering pipeline for skill build output (ADR-0010).
+//! Markdown rendering pipeline for skill build output (ADR-0010, ADR-0011).
 //!
 //! Walks the Skill tree depth-first, emitting Markdown with policy-first
-//! ordering at every hierarchy level.
+//! ordering at every hierarchy level. Uses Mustache templates via ramhorns.
 
-use std::fmt::Write;
+use ramhorns::{Content, Template};
 
 use crate::types::{Criterion, CriterionRef, ItemMeta, Policy, Skill, Step, Task, Procedure};
 
-/// Render a Skill as Markdown with policy-first ordering.
-pub fn render_skill(skill: &Skill) -> String {
-    let mut out = String::new();
+/// The default Mustache template for rendering skills as Markdown.
+/// Reproduces the same output as the original hardcoded `render_skill()`.
+///
+/// Note: ramhorns does not implement Mustache's standalone tag spec,
+/// so section tags must be inline with content to avoid extra blank lines.
+pub const DEFAULT_TEMPLATE: &str = "# {{{name}}}\
+{{#has_description}}\n\n{{{description}}}\
+{{/has_description}}\
+{{#has_conditions}}\n*Conditions: {{{conditions}}}*\
+{{/has_conditions}}\
+{{#has_policies}}\n\n## Policies\n\
+{{#policies}}\n> **{{{id}}}**: {{{text}}}\
+{{/policies}}\
+{{/has_policies}}\
+{{#has_criteria}}\n\n## Criteria\n\
+{{#criteria}}\n- **{{{id}}}**: {{{description}}}\
+{{/criteria}}\
+{{/has_criteria}}\
+{{#has_procedures}}\n\n## Procedures\
+{{#procedures}}\n\n### {{{id}}} — Procedure\
+{{#has_conditions}}\n*Conditions: {{{conditions}}}*\
+{{/has_conditions}}\
+{{#has_policies}}\n\n**Policies:**\n\
+{{#policies}}\n> **{{{id}}}**: {{{text}}}\
+{{/policies}}\
+{{/has_policies}}\
+{{#has_criteria}}\n\n**Criteria:**\n\
+{{#criteria}}\n- **{{{id}}}**: {{{description}}}\
+{{/criteria}}\
+{{/has_criteria}}\
+{{#has_entrance_criteria}}\n\n**Entrance Criteria:**\n\
+{{#entrance_criteria}}\n- {{{id}}}\
+{{/entrance_criteria}}\
+{{/has_entrance_criteria}}\
+{{#steps}}\n\n#### {{{id}}} — Step\
+{{#has_conditions}}\n*Conditions: {{{conditions}}}*\
+{{/has_conditions}}\
+{{#has_policies}}\n\n**Policies:**\n\
+{{#policies}}\n> **{{{id}}}**: {{{text}}}\
+{{/policies}}\
+{{/has_policies}}\
+{{#has_criteria}}\n\n**Criteria:**\n\
+{{#criteria}}\n- **{{{id}}}**: {{{description}}}\
+{{/criteria}}\
+{{/has_criteria}}\
+{{#has_tasks}}\n\n**Tasks:**\n\
+{{#tasks}}\n- `{{{id}}}` **{{{subject}}}**: {{{action}}}{{{invokes_annotation}}}\
+{{/tasks}}\
+{{/has_tasks}}\
+{{#has_completion_criteria}}\n\n**Completion Criteria:**\n\
+{{#completion_criteria}}\n- {{{id}}}\
+{{/completion_criteria}}\
+{{/has_completion_criteria}}\
+{{/steps}}\
+{{#has_exit_criteria}}\n\n**Exit Criteria:**\n\
+{{#exit_criteria}}\n- {{{id}}}\
+{{/exit_criteria}}\
+{{/has_exit_criteria}}\
+{{/procedures}}\
+{{/has_procedures}}\n";
 
-    // Skill title and description
-    writeln!(out, "# {}", skill.metadata.name).unwrap();
-    if !skill.metadata.description.is_empty() {
-        writeln!(out).unwrap();
-        writeln!(out, "{}", skill.metadata.description).unwrap();
-    }
+// --- Template context structs ---
 
-    render_conditions(&mut out, &skill.meta);
-
-    // Policies (before procedures)
-    if !skill.policies.is_empty() {
-        writeln!(out).unwrap();
-        writeln!(out, "## Policies").unwrap();
-        writeln!(out).unwrap();
-        for policy in &skill.policies {
-            render_policy(&mut out, policy);
-        }
-    }
-
-    // Criteria
-    if !skill.criteria.is_empty() {
-        writeln!(out).unwrap();
-        writeln!(out, "## Criteria").unwrap();
-        writeln!(out).unwrap();
-        for criterion in &skill.criteria {
-            render_criterion(&mut out, criterion);
-        }
-    }
-
-    // Procedures
-    if !skill.procedures.is_empty() {
-        writeln!(out).unwrap();
-        writeln!(out, "## Procedures").unwrap();
-        for procedure in &skill.procedures {
-            writeln!(out).unwrap();
-            render_procedure(&mut out, procedure);
-        }
-    }
-
-    out
+#[derive(Content)]
+struct RenderContext {
+    name: String,
+    description: String,
+    has_description: bool,
+    has_conditions: bool,
+    conditions: String,
+    has_policies: bool,
+    policies: Vec<PolicyCtx>,
+    has_criteria: bool,
+    criteria: Vec<CriterionCtx>,
+    has_procedures: bool,
+    procedures: Vec<ProcedureCtx>,
 }
 
-fn render_procedure(out: &mut String, procedure: &Procedure) {
-    writeln!(out, "### {} — Procedure", procedure.meta.id.as_str()).unwrap();
-
-    render_conditions(out, &procedure.meta);
-
-    if !procedure.policies.is_empty() {
-        writeln!(out).unwrap();
-        writeln!(out, "**Policies:**").unwrap();
-        writeln!(out).unwrap();
-        for policy in &procedure.policies {
-            render_policy(out, policy);
-        }
-    }
-
-    if !procedure.criteria.is_empty() {
-        writeln!(out).unwrap();
-        writeln!(out, "**Criteria:**").unwrap();
-        writeln!(out).unwrap();
-        for criterion in &procedure.criteria {
-            render_criterion(out, criterion);
-        }
-    }
-
-    if !procedure.entrance_criteria.is_empty() {
-        writeln!(out).unwrap();
-        writeln!(out, "**Entrance Criteria:**").unwrap();
-        writeln!(out).unwrap();
-        for cr in &procedure.entrance_criteria {
-            render_criterion_ref(out, cr);
-        }
-    }
-
-    for step in &procedure.steps {
-        writeln!(out).unwrap();
-        render_step(out, step);
-    }
-
-    if !procedure.exit_criteria.is_empty() {
-        writeln!(out).unwrap();
-        writeln!(out, "**Exit Criteria:**").unwrap();
-        writeln!(out).unwrap();
-        for cr in &procedure.exit_criteria {
-            render_criterion_ref(out, cr);
-        }
-    }
+#[derive(Content)]
+struct PolicyCtx {
+    id: String,
+    text: String,
 }
 
-fn render_step(out: &mut String, step: &Step) {
-    writeln!(out, "#### {} — Step", step.meta.id.as_str()).unwrap();
-
-    render_conditions(out, &step.meta);
-
-    if !step.policies.is_empty() {
-        writeln!(out).unwrap();
-        writeln!(out, "**Policies:**").unwrap();
-        writeln!(out).unwrap();
-        for policy in &step.policies {
-            render_policy(out, policy);
-        }
-    }
-
-    if !step.criteria.is_empty() {
-        writeln!(out).unwrap();
-        writeln!(out, "**Criteria:**").unwrap();
-        writeln!(out).unwrap();
-        for criterion in &step.criteria {
-            render_criterion(out, criterion);
-        }
-    }
-
-    if !step.tasks.is_empty() {
-        writeln!(out).unwrap();
-        writeln!(out, "**Tasks:**").unwrap();
-        writeln!(out).unwrap();
-        for task in &step.tasks {
-            render_task(out, task);
-        }
-    }
-
-    if !step.completion_criteria.is_empty() {
-        writeln!(out).unwrap();
-        writeln!(out, "**Completion Criteria:**").unwrap();
-        writeln!(out).unwrap();
-        for cr in &step.completion_criteria {
-            render_criterion_ref(out, cr);
-        }
-    }
+#[derive(Content)]
+struct CriterionCtx {
+    id: String,
+    description: String,
 }
 
-fn render_task(out: &mut String, task: &Task) {
-    let invokes = task
-        .invokes
-        .as_ref()
+#[derive(Content)]
+struct CriterionRefCtx {
+    id: String,
+}
+
+#[derive(Content)]
+struct TaskCtx {
+    id: String,
+    subject: String,
+    action: String,
+    invokes_annotation: String,
+}
+
+#[derive(Content)]
+struct StepCtx {
+    id: String,
+    has_conditions: bool,
+    conditions: String,
+    has_policies: bool,
+    policies: Vec<PolicyCtx>,
+    has_criteria: bool,
+    criteria: Vec<CriterionCtx>,
+    has_tasks: bool,
+    tasks: Vec<TaskCtx>,
+    has_completion_criteria: bool,
+    completion_criteria: Vec<CriterionRefCtx>,
+}
+
+#[derive(Content)]
+struct ProcedureCtx {
+    id: String,
+    has_conditions: bool,
+    conditions: String,
+    has_policies: bool,
+    policies: Vec<PolicyCtx>,
+    has_criteria: bool,
+    criteria: Vec<CriterionCtx>,
+    has_entrance_criteria: bool,
+    entrance_criteria: Vec<CriterionRefCtx>,
+    steps: Vec<StepCtx>,
+    has_exit_criteria: bool,
+    exit_criteria: Vec<CriterionRefCtx>,
+}
+
+// --- Conversion helpers ---
+
+fn format_conditions(meta: &ItemMeta) -> String {
+    meta.conditions.iter().map(|c| c.id().as_str().to_string()).collect::<Vec<_>>().join(", ")
+}
+
+fn policy_ctx(p: &Policy) -> PolicyCtx {
+    PolicyCtx { id: p.meta.id.as_str().to_string(), text: p.text.clone() }
+}
+
+fn criterion_ctx(c: &Criterion) -> CriterionCtx {
+    CriterionCtx { id: c.meta.id.as_str().to_string(), description: c.description.clone() }
+}
+
+fn criterion_ref_ctx(cr: &CriterionRef) -> CriterionRefCtx {
+    CriterionRefCtx { id: cr.id().as_str().to_string() }
+}
+
+fn task_ctx(t: &Task) -> TaskCtx {
+    let invokes_annotation = t.invokes.as_ref()
         .map(|id| format!(" (invokes: {})", id.as_str()))
         .unwrap_or_default();
-    writeln!(
-        out,
-        "- `{}` **{}**: {}{}",
-        task.meta.id.as_str(),
-        task.subject,
-        task.action,
-        invokes,
-    )
-    .unwrap();
-}
-
-fn render_policy(out: &mut String, policy: &Policy) {
-    writeln!(out, "> **{}**: {}", policy.meta.id.as_str(), policy.text).unwrap();
-}
-
-fn render_criterion(out: &mut String, criterion: &Criterion) {
-    writeln!(
-        out,
-        "- **{}**: {}",
-        criterion.meta.id.as_str(),
-        criterion.description
-    )
-    .unwrap();
-}
-
-fn render_criterion_ref(out: &mut String, cr: &CriterionRef) {
-    writeln!(out, "- {}", cr.id().as_str()).unwrap();
-}
-
-fn render_conditions(out: &mut String, meta: &ItemMeta) {
-    if !meta.conditions.is_empty() {
-        let refs: Vec<&str> = meta.conditions.iter().map(|c| c.id().as_str()).collect();
-        writeln!(out, "*Conditions: {}*", refs.join(", ")).unwrap();
+    TaskCtx {
+        id: t.meta.id.as_str().to_string(),
+        subject: t.subject.clone(),
+        action: t.action.clone(),
+        invokes_annotation,
     }
+}
+
+fn step_ctx(s: &Step) -> StepCtx {
+    StepCtx {
+        id: s.meta.id.as_str().to_string(),
+        has_conditions: !s.meta.conditions.is_empty(),
+        conditions: format_conditions(&s.meta),
+        has_policies: !s.policies.is_empty(),
+        policies: s.policies.iter().map(policy_ctx).collect(),
+        has_criteria: !s.criteria.is_empty(),
+        criteria: s.criteria.iter().map(criterion_ctx).collect(),
+        has_tasks: !s.tasks.is_empty(),
+        tasks: s.tasks.iter().map(task_ctx).collect(),
+        has_completion_criteria: !s.completion_criteria.is_empty(),
+        completion_criteria: s.completion_criteria.iter().map(criterion_ref_ctx).collect(),
+    }
+}
+
+fn procedure_ctx(p: &Procedure) -> ProcedureCtx {
+    ProcedureCtx {
+        id: p.meta.id.as_str().to_string(),
+        has_conditions: !p.meta.conditions.is_empty(),
+        conditions: format_conditions(&p.meta),
+        has_policies: !p.policies.is_empty(),
+        policies: p.policies.iter().map(policy_ctx).collect(),
+        has_criteria: !p.criteria.is_empty(),
+        criteria: p.criteria.iter().map(criterion_ctx).collect(),
+        has_entrance_criteria: !p.entrance_criteria.is_empty(),
+        entrance_criteria: p.entrance_criteria.iter().map(criterion_ref_ctx).collect(),
+        steps: p.steps.iter().map(step_ctx).collect(),
+        has_exit_criteria: !p.exit_criteria.is_empty(),
+        exit_criteria: p.exit_criteria.iter().map(criterion_ref_ctx).collect(),
+    }
+}
+
+impl From<&Skill> for RenderContext {
+    fn from(skill: &Skill) -> Self {
+        RenderContext {
+            name: skill.metadata.name.clone(),
+            description: skill.metadata.description.clone(),
+            has_description: !skill.metadata.description.is_empty(),
+            has_conditions: !skill.meta.conditions.is_empty(),
+            conditions: format_conditions(&skill.meta),
+            has_policies: !skill.policies.is_empty(),
+            policies: skill.policies.iter().map(policy_ctx).collect(),
+            has_criteria: !skill.criteria.is_empty(),
+            criteria: skill.criteria.iter().map(criterion_ctx).collect(),
+            has_procedures: !skill.procedures.is_empty(),
+            procedures: skill.procedures.iter().map(procedure_ctx).collect(),
+        }
+    }
+}
+
+/// Render a Skill as Markdown with policy-first ordering using the default template.
+pub fn render_skill(skill: &Skill) -> String {
+    render_skill_with_template(skill, DEFAULT_TEMPLATE)
+        .expect("default template must parse")
+}
+
+/// Render a Skill as Markdown using a custom Mustache template.
+pub fn render_skill_with_template(skill: &Skill, template: &str) -> Result<String, String> {
+    let tpl = Template::new(template).map_err(|e| format!("template parse error: {e}"))?;
+    let ctx = RenderContext::from(skill);
+    Ok(tpl.render(&ctx))
 }
 
 #[cfg(test)]
