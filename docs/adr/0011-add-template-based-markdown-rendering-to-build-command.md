@@ -1,7 +1,7 @@
 # 11. Add template-based Markdown rendering to build command
 
 Date: 2026-04-08
-Status: Planned
+Status: Accepted
 Last Updated: 2026-04-08
 Links: ADR-0009, ADR-0010
 

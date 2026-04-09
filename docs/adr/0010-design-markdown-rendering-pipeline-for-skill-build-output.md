@@ -1,7 +1,7 @@
 # 10. Design Markdown rendering pipeline for skill build output
 
 Date: 2026-04-08
-Status: Accepted
+Status: Partially Superseded by ADR-0011
 Last Updated: 2026-04-08
 Links: ADR-0002, ADR-0006, ADR-0009
 
