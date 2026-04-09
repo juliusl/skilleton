@@ -1,0 +1,52 @@
+# {{{name}}}{{#has_description}}
+
+{{{description}}}{{/has_description}}{{#has_conditions}}
+*Conditions: {{{conditions}}}*{{/has_conditions}}{{#has_policies}}
+
+## Policies
+{{#policies}}
+> **{{{id}}}**: {{{text}}}{{/policies}}{{/has_policies}}{{#has_criteria}}
+
+## Criteria
+{{#criteria}}
+- **{{{id}}}**: {{{description}}}{{/criteria}}{{/has_criteria}}{{#has_procedures}}
+
+## Procedures{{#procedures}}
+
+### {{{id}}} — Procedure{{#has_conditions}}
+*Conditions: {{{conditions}}}*{{/has_conditions}}{{#has_policies}}
+
+**Policies:**
+{{#policies}}
+> **{{{id}}}**: {{{text}}}{{/policies}}{{/has_policies}}{{#has_criteria}}
+
+**Criteria:**
+{{#criteria}}
+- **{{{id}}}**: {{{description}}}{{/criteria}}{{/has_criteria}}{{#has_entrance_criteria}}
+
+**Entrance Criteria:**
+{{#entrance_criteria}}
+- {{{id}}}{{/entrance_criteria}}{{/has_entrance_criteria}}{{#steps}}
+
+#### {{{id}}} — Step{{#has_conditions}}
+*Conditions: {{{conditions}}}*{{/has_conditions}}{{#has_policies}}
+
+**Policies:**
+{{#policies}}
+> **{{{id}}}**: {{{text}}}{{/policies}}{{/has_policies}}{{#has_criteria}}
+
+**Criteria:**
+{{#criteria}}
+- **{{{id}}}**: {{{description}}}{{/criteria}}{{/has_criteria}}{{#has_tasks}}
+
+**Tasks:**
+{{#tasks}}
+- `{{{id}}}` **{{{subject}}}**: {{{action}}}{{{invokes_annotation}}}{{/tasks}}{{/has_tasks}}{{#has_completion_criteria}}
+
+**Completion Criteria:**
+{{#completion_criteria}}
+- {{{id}}}{{/completion_criteria}}{{/has_completion_criteria}}{{/steps}}{{#has_exit_criteria}}
+
+**Exit Criteria:**
+{{#exit_criteria}}
+- {{{id}}}{{/exit_criteria}}{{/has_exit_criteria}}{{/procedures}}{{/has_procedures}}
