@@ -63,11 +63,12 @@ Since semantics and ordering matters, it's actually difficult to make changes an
 - Define simple skill toy to validate procedure
 - **Resolved**: Extracted shared `run_validators()` helper in CLI to eliminate validation duplication between check and build commands
 - **Resolved**: Fixed N² error counting bug in `cmd_check` (QA finding)
-- **Follow-up (M4)**: Add `#[serde(default, skip_serializing_if = "Vec::is_empty")]` to all Vec fields (policies, tasks, steps, entrance/exit/completion criteria, procedures) — currently only `criteria` has this, forcing verbose TOML with empty arrays
-- **Follow-up (M4)**: Review `SkillWriter` path API — `write(root, skill)` creates `<root>/<slug>/...`, requiring `path.parent()` workaround in init; consider adding `write_to(dir, skill)` for direct writes
-- **Follow-up (M4)**: Review `detect_policy_overlaps` sensitivity — reports false positive for policies at different hierarchy levels in the onboarding fixture
 
-### Milestone 4
+### Milestone 4 <!-- status: complete -->
+- **Resolved**: Added `#[serde(default, skip_serializing_if = "Vec::is_empty")]` to all Vec fields (policies, tasks, steps, entrance/exit/completion criteria, procedures, conditions)
+- **Resolved**: Added `SkillWriter::write_to(dir, skill)` for direct writes; `cmd_init` no longer needs `path.parent()` workaround
+- **Resolved**: Raised `detect_policy_overlaps` same-level threshold from 2 to 3 — two complementary policies no longer flagged as overlapping
+- **Resolved**: Template-based Markdown rendering via Mustache/ramhorns (ADR-0011) — `skilleton build --template <file>` for custom templates; default template reproduces original output
 - Finalize all schemas and specifications
 - Stabilize data model before building visual tooling
 
