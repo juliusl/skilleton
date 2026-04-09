@@ -1,9 +1,16 @@
 # {{{name}}}{{#has_description}}
 
-{{{description}}}{{/has_description}}{{#has_conditions}}
+{{{description}}}{{/has_description}}
+
+**If a step is skipped, log the justification inline before proceeding.** Skipping without justification is a workflow violation.
+
+---{{#has_conditions}}
 *Conditions: {{{conditions}}}*{{/has_conditions}}{{#has_policies}}
 
 ## Policies
+
+**Ignoring any of the below policies is a runtime violation ESPECIALLY when the user is away and operating autonomously**
+
 {{#policies}}
 > **{{{id}}}**: {{{text}}}{{/policies}}{{/has_policies}}{{#has_criteria}}
 
@@ -11,7 +18,12 @@
 {{#criteria}}
 - **{{{id}}}**: {{{description}}}{{/criteria}}{{/has_criteria}}{{#has_procedures}}
 
-## Procedures{{#procedures}}
+## Procedures
+
+| ID | Description |
+|----|-------------|{{#procedures}}
+| {{{id}}} | Procedure |{{/procedures}}
+{{#procedures}}
 
 ### {{{id}}} — Procedure{{#has_conditions}}
 *Conditions: {{{conditions}}}*{{/has_conditions}}{{#has_policies}}
